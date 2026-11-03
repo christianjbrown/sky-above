@@ -169,7 +169,7 @@ services:
   # so nothing on the Pi has to be reachable from the internet. It checks twice
   # a day and only renews once a third of the certificate's life is left.
   certs:
-    image: goacme/lego:v5.5.2
+    image: goacme/lego:v5.6.0
     container_name: certs
     restart: unless-stopped
     entrypoint:
