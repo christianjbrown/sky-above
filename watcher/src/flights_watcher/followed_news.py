@@ -15,7 +15,7 @@ from typing import Any, Protocol
 
 from flights_watcher.clock import Clock
 from flights_watcher.following import Followed
-from flights_watcher.speech import SpeechFailed
+from flights_watcher.speech import SpeechFailed, spelled_flight
 
 BEFORE_TAKE_OFF = ("waiting",)
 DOWN = ("landed", "arrived")
@@ -239,7 +239,7 @@ def _name(card: dict[str, Any]) -> str:
     flight = card["flight"]
     destination = flight.get("destination") or {}
     to = destination.get("city") or destination.get("name") or destination.get("code")
-    spoken = " ".join(flight["ident"])
+    spoken = spelled_flight(flight["ident"])
     return f"{spoken} to {to}" if to else spoken
 
 

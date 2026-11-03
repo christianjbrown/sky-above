@@ -138,7 +138,7 @@ class AnnouncementWording:
         if not (flight and origin and destination):
             return None
         # The commas give the voice a breath after the flight number and between the parts.
-        return ", ".join([" ".join(flight), f"from {origin}", f"to {destination}"])
+        return ", ".join([spelled_flight(flight), f"from {origin}", f"to {destination}"])
 
     def _place(self, airport: dict[str, Any] | None) -> str | None:
         if not airport:
@@ -149,6 +149,20 @@ class AnnouncementWording:
             # adsbdb says "London Stansted Airport", FlightAware just "Stansted".
             return name if name.startswith(city) else f"{city} {name}"
         return city or name or None
+
+
+# Three letters (BAW86S) or two characters (BA1340, U21234) before the number starts.
+_AIRLINE_DESIGNATOR = re.compile(r"^([A-Z]{3}|[A-Z0-9]{2})(?=\d)")
+
+
+def spelled_flight(flight: str) -> str:
+    """Read out a character at a time, with a comma between the airline and the number:
+    "B A, 1 3 4 0". Without it the voice runs the A into the 1. A registration has no
+    airline to split off, so G-EUYM is just "G E U Y M"."""
+    match = _AIRLINE_DESIGNATOR.match(flight)
+    if match is None:
+        return " ".join(flight)
+    return f"{' '.join(match.group(1))}, {' '.join(flight[match.end() :])}"
 
 
 class SpeechSynthesizer(Protocol):

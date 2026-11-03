@@ -72,8 +72,8 @@ def test_nothing_is_said_about_how_a_flight_was_when_it_first_turned_up():
 def test_a_gate_given_out_then_changed():
     told = news()
     told.text(card())
-    assert told.text(card(gateOrigin="B32")) == "B A 4 3 2 1 to Berlin will leave from gate B32."
-    assert told.text(card(gateOrigin="B41")) == "B A 4 3 2 1 to Berlin has moved to gate B41."
+    assert told.text(card(gateOrigin="B32")) == "B A, 4 3 2 1 to Berlin will leave from gate B32."
+    assert told.text(card(gateOrigin="B41")) == "B A, 4 3 2 1 to Berlin has moved to gate B41."
 
 
 def test_a_delay_is_announced_once_it_has_moved_far_enough_either_way():
@@ -82,14 +82,14 @@ def test_a_delay_is_announced_once_it_has_moved_far_enough_either_way():
     assert told.text(card(departureDelayMinutes=9, departsAt="2027-03-12T16:34:00Z")) is None
     assert (
         told.text(card(departureDelayMinutes=12, departsAt="2027-03-12T16:37:00Z"))
-        == "B A 4 3 2 1 to Berlin is now delayed by 12 minutes, leaving at 16:37."
+        == "B A, 4 3 2 1 to Berlin is now delayed by 12 minutes, leaving at 16:37."
     )
     assert told.text(card(departureDelayMinutes=21, departsAt="2027-03-12T16:46:00Z")) is None
     assert (
         told.text(card(departureDelayMinutes=85, departsAt="2027-03-12T17:50:00Z"))
-        == "B A 4 3 2 1 to Berlin is now delayed by an hour and 25 minutes, leaving at 17:50."
+        == "B A, 4 3 2 1 to Berlin is now delayed by an hour and 25 minutes, leaving at 17:50."
     )
-    assert told.text(card(departureDelayMinutes=0)) == "B A 4 3 2 1 to Berlin is back on time, leaving at 16:25."
+    assert told.text(card(departureDelayMinutes=0)) == "B A, 4 3 2 1 to Berlin is back on time, leaving at 16:25."
 
 
 def test_our_own_estimate_is_called_likely():
@@ -97,26 +97,28 @@ def test_our_own_estimate_is_called_likely():
     told.text(card())
     assert (
         told.text(card(departureDelayMinutes=25, departsAt="2027-03-12T16:50:00Z", departureEstimate="ours"))
-        == "B A 4 3 2 1 to Berlin now looks likely to leave 25 minutes late, at 16:50."
+        == "B A, 4 3 2 1 to Berlin now looks likely to leave 25 minutes late, at 16:50."
     )
 
 
 def test_cancelled_says_only_that():
     told = news()
     told.text(card(gateOrigin="B32"))
-    assert told.text(card(phase="cancelled", gateOrigin="B32", departureDelayMinutes=None)) == ("B A 4 3 2 1 to Berlin has been cancelled.")
+    assert told.text(card(phase="cancelled", gateOrigin="B32", departureDelayMinutes=None)) == (
+        "B A, 4 3 2 1 to Berlin has been cancelled."
+    )
 
 
 def test_diverted():
     told = news()
     told.text(card(phase="flying"))
-    assert told.text(card(phase="flying", diverted=True)) == "B A 4 3 2 1 to Berlin has been diverted."
+    assert told.text(card(phase="flying", diverted=True)) == "B A, 4 3 2 1 to Berlin has been diverted."
 
 
 def test_taking_off_says_when_it_should_land_in_home_time():
     told = news()
     told.text(card(phase="taxiing"))
-    assert told.text(card(phase="flying")) == "B A 4 3 2 1 to Berlin has taken off, and should land at 18:20."
+    assert told.text(card(phase="flying")) == "B A, 4 3 2 1 to Berlin has taken off, and should land at 18:20."
     assert told.text(card(phase="flying")) is None
 
 
@@ -127,7 +129,7 @@ def test_nearly_down_is_said_once_as_it_comes_within_twenty_minutes():
     clock.at = datetime(2027, 3, 12, 17, 55, tzinfo=UTC)
     assert told.text(card(phase="flying")) is None
     clock.at = datetime(2027, 3, 12, 18, 1, tzinfo=UTC)
-    assert told.text(card(phase="flying")) == "B A 4 3 2 1 to Berlin lands in about 19 minutes."
+    assert told.text(card(phase="flying")) == "B A, 4 3 2 1 to Berlin lands in about 19 minutes."
     clock.at = datetime(2027, 3, 12, 18, 5, tzinfo=UTC)
     assert told.text(card(phase="flying")) is None
 
@@ -135,9 +137,9 @@ def test_nearly_down_is_said_once_as_it_comes_within_twenty_minutes():
 def test_landing_and_the_belt_and_two_at_once():
     told = news()
     told.text(card(phase="flying"))
-    assert told.text(card(phase="landed", baggageClaim="7")) == ("B A 4 3 2 1 to Berlin has landed. It has its bags on belt 7.")
+    assert told.text(card(phase="landed", baggageClaim="7")) == ("B A, 4 3 2 1 to Berlin has landed. It has its bags on belt 7.")
     assert told.text(card(phase="arrived", baggageClaim="7")) is None
-    assert told.text(card(phase="arrived", baggageClaim="9")) == "B A 4 3 2 1 to Berlin has moved its bags to belt 9."
+    assert told.text(card(phase="arrived", baggageClaim="9")) == "B A, 4 3 2 1 to Berlin has moved its bags to belt 9."
 
 
 def test_each_flight_and_day_is_kept_apart():
@@ -207,14 +209,14 @@ def test_a_delay_of_whole_hours_leaves_out_the_minutes():
     told.text(card())
     assert (
         told.text(card(departureDelayMinutes=120, departsAt="2027-03-12T18:25:00Z"))
-        == "B A 4 3 2 1 to Berlin is now delayed by 2 hours, leaving at 18:25."
+        == "B A, 4 3 2 1 to Berlin is now delayed by 2 hours, leaving at 18:25."
     )
 
 
 def test_taking_off_without_a_landing_time_says_only_that():
     told = news()
     told.text(card(phase="taxiing"))
-    assert told.text(card(phase="flying", landsAt=None)) == "B A 4 3 2 1 to Berlin has taken off."
+    assert told.text(card(phase="flying", landsAt=None)) == "B A, 4 3 2 1 to Berlin has taken off."
 
 
 def test_the_announcer_drops_its_clip_when_the_flight_ends():

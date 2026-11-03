@@ -23,6 +23,7 @@ from flights_watcher.speech import (
     SpokenArrival,
     SpokenWhereabouts,
     WyomingSpeech,
+    spelled_flight,
 )
 
 INSTANT = SpeechTiming(13, 0, 0, 0)
@@ -48,14 +49,22 @@ CARD = {
 
 
 def test_wording_reads_the_flight_and_names_london_airports_in_full():
-    assert AnnouncementWording(LONDON, NOWHERE).text(CARD) == "F R 2 0 S W, from Alicante, to London Stansted."
+    assert AnnouncementWording(LONDON, NOWHERE).text(CARD) == "F R, 2 0 S W, from Alicante, to London Stansted."
+
+
+@pytest.mark.parametrize(
+    ("flight", "spoken"),
+    [("BA1340", "B A, 1 3 4 0"), ("U21234", "U 2, 1 2 3 4"), ("BAW86S", "B A W, 8 6 S"), ("GEUYM", "G E U Y M")],
+)
+def test_the_airline_is_kept_apart_from_the_number_so_the_voice_does_not_run_them_together(flight, spoken):
+    assert spelled_flight(flight) == spoken
 
 
 def test_any_city_with_several_airports_names_them_in_full_and_drops_the_international():
     orly = {**CARD, "destination": {"code": "ORY", "name": "Orly Intl", "city": "Paris"}}
-    assert AnnouncementWording(LONDON, NOWHERE).text(orly) == "F R 2 0 S W, from Alicante, to Paris Orly."
+    assert AnnouncementWording(LONDON, NOWHERE).text(orly) == "F R, 2 0 S W, from Alicante, to Paris Orly."
     elsewhere = {**CARD, "destination": {"code": "BER", "name": "Berlin Brandenburg Airport", "city": "Berlin"}}
-    assert AnnouncementWording(LONDON, NOWHERE).text(elsewhere) == "F R 2 0 S W, from Alicante, to Berlin."
+    assert AnnouncementWording(LONDON, NOWHERE).text(elsewhere) == "F R, 2 0 S W, from Alicante, to Berlin."
 
 
 def test_an_air_ambulance_or_the_police_go_by_what_they_are():
@@ -67,13 +76,13 @@ def test_an_air_ambulance_or_the_police_go_by_what_they_are():
 
 def test_wording_names_london_airports_in_full_whoever_supplied_the_name():
     flightaware = {**CARD, "destination": {"code": "STN", "name": "Stansted", "city": "London"}}
-    assert AnnouncementWording(LONDON, NOWHERE).text(flightaware) == "F R 2 0 S W, from Alicante, to London Stansted."
+    assert AnnouncementWording(LONDON, NOWHERE).text(flightaware) == "F R, 2 0 S W, from Alicante, to London Stansted."
 
 
 def test_wording_says_how_far_away_and_which_way_to_look():
     north_north_east = {**CARD, "lat": HOME.lat + 0.0092, "lon": HOME.lon + 0.006}
     assert AnnouncementWording(LONDON, SpokenWhereabouts(HOME)).text(north_north_east) == (
-        "F R 2 0 S W, from Alicante, to London Stansted, 1.1 kilometres away, in a North-North-Easterly direction."
+        "F R, 2 0 S W, from Alicante, to London Stansted, 1.1 kilometres away, in a North-North-Easterly direction."
     )
 
 
@@ -253,11 +262,11 @@ def test_the_announcement_says_where_the_plane_will_be_when_the_words_are_heard(
         AnnouncementWording(LONDON, SpokenWhereabouts(HOME)), arrival, timing, SpeechClips(tmp_path, "speech/", 5, synth), 10, LOG
     )
     announcer.speech_for(card)
-    # The lead-in "F R 2 0 S W, from Alicante, to London Stansted" is 46 characters, 4.6 seconds,
+    # The lead-in "F R, 2 0 S W, from Alicante, to London Stansted" is 46 characters, 4.6 seconds,
     # after a 10 second launch: about 14.6 seconds, or 1.8 km, so 1.2 km away when it is said.
     # The whole announcement is heard about 25 seconds from now, by when it is overhead.
     assert synth.texts[-1] == (
-        "F R 2 0 S W, from Alicante, to London Stansted, 1.2 kilometres away, in an Easterly direction, heading West. It's overhead now."
+        "F R, 2 0 S W, from Alicante, to London Stansted, 1.2 kilometres away, in an Easterly direction, heading West. It's overhead now."
     )
     announcer.speech_for({**card, "hex": "next", "callsign": "EZY1"})
     # The next plane takes over a card already showing, so it starts after 1 second, not 10:
