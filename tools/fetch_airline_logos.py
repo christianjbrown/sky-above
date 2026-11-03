@@ -39,9 +39,10 @@ ALIASES = {
     "TFL": "TOM",  # TUI fly Netherlands
     "BLX": "TOM",  # TUI fly Nordic
 }
-# Airlines Soaring Symbols has no logo for, from Wikimedia Commons, public domain.
+# Airlines Soaring Symbols has no logo for, from Wikimedia, public domain.
 EXTRAS = {
     "TOM": "https://upload.wikimedia.org/wikipedia/commons/6/6f/TUI_Logo_2016.svg",  # TUI Airways
+    "LOG": "https://upload.wikimedia.org/wikipedia/en/9/94/Loganair_logo.svg",  # Loganair
 }
 OUT = pathlib.Path(__file__).resolve().parents[1] / "receiver" / "logos"
 
