@@ -75,7 +75,18 @@ from flights_watcher.naming import (
     Service,
     Services,
 )
-from flights_watcher.paths import FirstFound, JsonPathStore, LearnedPaths, Likeness, Observing, PathFinder, PathRecorder
+from flights_watcher.paths import (
+    CameOverhead,
+    FirstFound,
+    JsonPathStore,
+    LearnedPaths,
+    Likeness,
+    MissedBefore,
+    MissedIt,
+    Observing,
+    PathFinder,
+    PathRecorder,
+)
 from flights_watcher.presence import Linger, MinimumShowing
 from flights_watcher.rare import RareKinds
 from flights_watcher.schedule import QuietHours
@@ -194,6 +205,9 @@ PATH_HELD_POLLS = 3
 PATHS_KEPT = 60
 PATH_KEPT_FOR = timedelta(days=90)
 PATHS_FILE = "paths.json"
+# Two planes that looked on their way from the same spot and missed, and none that came over.
+MISSES_MIN = 2
+MISSES_FILE = "missed.json"
 # A plane on its way due overhead within this long takes the card at once, rather than
 # waiting for the plane before to finish, so there is still time to launch and announce it.
 APPROACH_DUE_SECONDS = 45
@@ -433,7 +447,19 @@ def watcher_for(
     paths = LearnedPaths(
         JsonPathStore(pathlib.Path(settings.state_dir) / PATHS_FILE, logger), PATH_LIKENESS, PATHS_KEPT, PATH_KEPT_FOR, clock
     )
-    recorder = PathRecorder(paths, settings.home, zone.radius_km, PATH_KM, PATH_EVERY_SECONDS, PATH_GONE_SECONDS, clock, logger)
+    misses = LearnedPaths(
+        JsonPathStore(pathlib.Path(settings.state_dir) / MISSES_FILE, logger), PATH_LIKENESS, PATHS_KEPT, PATH_KEPT_FOR, clock
+    )
+    recorder = PathRecorder(
+        [CameOverhead(paths, zone.radius_km, logger), MissedIt(misses, zone.radius_km, logger)],
+        closest,
+        settings.home,
+        zone.radius_km,
+        PATH_KM,
+        PATH_EVERY_SECONDS,
+        PATH_GONE_SECONDS,
+        clock,
+    )
     approaching = FirstFound(
         [
             ApproachFinder(
@@ -444,7 +470,7 @@ def watcher_for(
                 APPROACH_STEADY_POLLS_PER_KM,
                 APPROACH_MAX_TURN_DEG,
                 APPROACH_WANDER_KM,
-                [LandsFirst(), SteeredIn(STEERED_BELOW_FT, STEERED_BEYOND_KM, DESCENDING_FPM)],
+                [LandsFirst(), SteeredIn(STEERED_BELOW_FT, STEERED_BEYOND_KM, DESCENDING_FPM), MissedBefore(misses, paths, MISSES_MIN)],
             ),
             PathFinder(paths, settings.home, zone.radius_km, PATH_MIN_PLANES, PATH_HELD_POLLS),
         ]

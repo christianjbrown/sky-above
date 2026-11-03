@@ -6,7 +6,12 @@ else. But planes off the same runway fly the same route, so once two earlier pla
 come overhead along it, a new one at the same spot, height and heading is on its way too,
 turn and all. Each runway, and each direction the airport is working in, is a route of its
 own, learned separately, and a plane on a route that has never brought anything overhead
-matches nothing."""
+matches nothing.
+
+The misses are learned too. A plane whose straight line ran through the zone but which then
+turned away without coming in leaves the points where it looked to be on its way, and once
+two have missed from the same spot, with nothing from there ever coming overhead, a straight
+line from that spot is no longer believed (see MissedBefore)."""
 
 import json
 import logging
@@ -145,19 +150,23 @@ class LearnedPaths:
         return found
 
 
-class _Flight:
-    """One plane's track near home so far: where it has been, and when it was closest."""
+class Flight:
+    """One plane's track near home so far: where it has been, where its line ran through
+    the zone, and when it was closest."""
 
     def __init__(self, now: float) -> None:
         self.fixes: list[tuple[float, Fix]] = []
+        self.aimed: list[tuple[float, Fix]] = []
         self.closest_km = math.inf
         self.closest_at = now
         self.last_seen = now
 
-    def note(self, fix: Fix, distance_km: float, now: float, every_seconds: float) -> None:
+    def note(self, fix: Fix, distance_km: float, aimed: bool, now: float, every_seconds: float) -> None:
         self.last_seen = now
         if not self.fixes or now - self.fixes[-1][0] >= every_seconds:
             self.fixes.append((now, fix))
+        if aimed and (not self.aimed or now - self.aimed[-1][0] >= every_seconds):
+            self.aimed.append((now, fix))
         if distance_km < self.closest_km:
             self.closest_km, self.closest_at = distance_km, now
 
@@ -165,38 +174,81 @@ class _Flight:
         """Outside the zone and well past its closest point."""
         return distance_km > radius_km and distance_km > self.closest_km + 1
 
-    def path(self, hex_code: str, radius_km: float, learned_at: datetime) -> LearnedPath | None:
-        """The way it came, if it came within radius_km, timed to its closest point."""
-        if self.closest_km > radius_km:
-            return None
-        fixes = tuple(replace(fix, seconds_to_closest=self.closest_at - at) for at, fix in self.fixes if at < self.closest_at)
-        return LearnedPath(hex_code, learned_at, fixes) if len(fixes) >= 2 else None
+    def timed(self, fixes: Iterable[tuple[float, Fix]]) -> tuple[Fix, ...]:
+        """The fixes, each with how long the plane took from there to its closest point."""
+        return tuple(replace(fix, seconds_to_closest=self.closest_at - at) for at, fix in fixes)
+
+
+class Lesson(Protocol):
+    def learn(self, hex_code: str, flight: Flight, learned_at: datetime) -> None:
+        """Keep what a plane that has gone on its way showed, if anything."""
+        ...
+
+
+class CameOverhead:
+    """The path a plane that came within radius_km flew to get there."""
+
+    def __init__(self, paths: LearnedPaths, radius_km: float, logger: logging.Logger) -> None:
+        self._paths = paths
+        self._radius_km = radius_km
+        self._logger = logger
+
+    def learn(self, hex_code: str, flight: Flight, learned_at: datetime) -> None:
+        if flight.closest_km > self._radius_km:
+            return
+        fixes = flight.timed((at, fix) for at, fix in flight.fixes if at < flight.closest_at)
+        if len(fixes) >= 2:
+            self._paths.add(LearnedPath(hex_code, learned_at, fixes))
+            self._logger.info("learned the path %s flew overhead, %d points", hex_code, len(fixes))
+
+
+class MissedIt:
+    """Where a plane was while its line ran through the zone, if it then went past without
+    coming within radius_km."""
+
+    def __init__(self, misses: LearnedPaths, radius_km: float, logger: logging.Logger) -> None:
+        self._misses = misses
+        self._radius_km = radius_km
+        self._logger = logger
+
+    def learn(self, hex_code: str, flight: Flight, learned_at: datetime) -> None:
+        if flight.closest_km <= self._radius_km or not flight.aimed:
+            return
+        fixes = flight.timed(flight.aimed)
+        self._misses.add(LearnedPath(hex_code, learned_at, fixes))
+        self._logger.info("learned where %s looked on its way but missed, %d points", hex_code, len(fixes))
+
+
+class Approach(Protocol):
+    def of(self, plane: Aircraft) -> tuple[float, float] | None:
+        """Seconds until the plane is closest to home on its straight line, and how close, in km."""
+        ...
 
 
 class PathRecorder:
-    """Watches every plane near home, and when one that came within radius_km has gone
-    on its way, keeps the path it flew to get there, from as far out as path_km."""
+    """Watches every plane near home, from as far out as path_km, and when one has gone on
+    its way hands what it did to each of the lessons."""
 
     def __init__(
         self,
-        paths: LearnedPaths,
+        lessons: Sequence[Lesson],
+        closest: Approach,
         centre: Location,
         radius_km: float,
         path_km: float,
         every_seconds: float,
         gone_seconds: float,
         clock: Clock,
-        logger: logging.Logger,
     ) -> None:
-        self._paths = paths
+        self._lessons = lessons
+        self._closest = closest
         self._centre = centre
         self._radius_km = radius_km
         self._path_km = path_km
         self._every_seconds = every_seconds
         self._gone_seconds = gone_seconds
         self._clock = clock
-        self._logger = logger
-        self._flying: dict[str, _Flight] = {}
+        self._flying: dict[str, Flight] = {}
 
     def observe(self, aircraft: Iterable[Aircraft]) -> None:
         now = self._clock.monotonic()
@@ -206,18 +258,36 @@ class PathRecorder:
             distance_km = self._centre.distance_km(plane.location)
             if distance_km > self._path_km:
                 continue
-            flight = self._flying.setdefault(plane.hex, _Flight(now))
-            flight.note(Fix(plane.location, plane.altitude_ft, plane.track_deg, 0.0), distance_km, now, self._every_seconds)
+            flight = self._flying.setdefault(plane.hex, Flight(now))
+            fix = Fix(plane.location, plane.altitude_ft, plane.track_deg, 0.0)
+            flight.note(fix, distance_km, distance_km > self._radius_km and self._aimed(plane), now, self._every_seconds)
             if flight.gone_past(distance_km, self._radius_km):
                 self._finish(plane.hex)
         for hex_code in [h for h, f in self._flying.items() if now - f.last_seen > self._gone_seconds]:
             self._finish(hex_code)
 
+    def _aimed(self, plane: Aircraft) -> bool:
+        closest = self._closest.of(plane)
+        return closest is not None and closest[1] <= self._radius_km
+
     def _finish(self, hex_code: str) -> None:
-        path = self._flying.pop(hex_code).path(hex_code, self._radius_km, self._clock.now())
-        if path is not None:
-            self._paths.add(path)
-            self._logger.info("learned the path %s flew overhead, %d points", hex_code, len(path.fixes))
+        flight = self._flying.pop(hex_code)
+        for lesson in self._lessons:
+            lesson.learn(hex_code, flight, self._clock.now())
+
+
+class MissedBefore:
+    """A plane where at least min_misses earlier planes looked to be on their way and then
+    missed, when no plane from there has ever come overhead: a departure route that turns
+    away before home, say. Its straight line has been wrong before, so it is not believed."""
+
+    def __init__(self, misses: LearnedPaths, hits: LearnedPaths, min_misses: int) -> None:
+        self._misses = misses
+        self._hits = hits
+        self._min_misses = min_misses
+
+    def excludes(self, plane: Aircraft, distance_km: float, seconds_to_closest: float) -> bool:
+        return len(self._misses.on(plane)) >= self._min_misses and not self._hits.on(plane)
 
 
 class PathFinder:
