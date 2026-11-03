@@ -60,6 +60,8 @@ class AdsbdbRouteLookup:
         try:
             data = self._http.get_json(f"{self._base_url}/callsign/{quote(callsign)}")
         except HTTPError as error:
+            # It holds the response, and with it the connection.
+            error.close()
             if error.code == 404:
                 return None
             raise LookupFailed(str(error)) from error

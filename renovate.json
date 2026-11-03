@@ -1,19 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": [
+    "config:recommended"
+  ],
   "description": [
-    "Renovate keeps the Python and npm dependencies and the SHA-pinned GitHub Actions current. Every update arrives as a pull request and has to pass the required checks before it merges.",
-    "Auto-merge: minor, patch and digest updates merge through GitHub native auto-merge once those checks pass.",
-    "MAJOR updates stay manual, because they can need code changes."
+    "Renovate keeps the Python and npm dependencies, the Docker images and the SHA-pinned GitHub Actions current.",
+    "Every update, major ones included, merges through GitHub native auto-merge once the required checks pass. Those checks build the watcher's image too, so a base image that no longer builds fails before it merges."
   ],
   "dependencyDashboard": true,
   "automerge": true,
-  "platformAutomerge": true,
-  "packageRules": [
-    {
-      "description": "Keep major updates manual - they need review before merging.",
-      "matchUpdateTypes": ["major"],
-      "automerge": false
-    }
-  ]
+  "platformAutomerge": true
 }
