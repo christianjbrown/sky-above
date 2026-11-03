@@ -6,14 +6,19 @@ import pytest
 
 from fakes import HOME, FakeClock
 from fakes import plane as fake_plane
+from flights_watcher.approach import ClosestApproach
+from flights_watcher.bound import SameWay
 from flights_watcher.geo import Location
 from flights_watcher.paths import (
+    CameOverhead,
     FirstFound,
     Fix,
     JsonPathStore,
     LearnedPath,
     LearnedPaths,
     Likeness,
+    MissedBefore,
+    MissedIt,
     Observing,
     PathFinder,
     PathRecorder,
@@ -23,6 +28,21 @@ from flights_watcher.zone import Sighting
 KM_PER_DEGREE_LON = 111.32 * math.cos(math.radians(HOME.lat))
 LIKENESS = Likeness(within_km=0.5, within_ft=1500, within_deg=15)
 LOGGER = logging.getLogger("test")
+WAY = SameWay(within_deg=30)
+NORTH, EAST = 10.0, 100.0
+
+
+class Bounds:
+    """Which way each plane is bound, by hex, and how often it was asked."""
+
+    def __init__(self, default: float | None = None, **by_hex: float | None) -> None:
+        self._default = default
+        self._by_hex = by_hex
+        self.asked: list[str] = []
+
+    def of(self, plane) -> float | None:
+        self.asked.append(plane.hex)
+        return self._by_hex.get(plane.hex, self._default)
 
 
 def at(east_km: float, north_km: float = 0.0) -> Location:
@@ -44,7 +64,7 @@ class MemoryStore:
         self.paths = list(paths)
 
 
-def departure(hex_code: str) -> LearnedPath:
+def departure(hex_code: str, bound_deg: float | None = None) -> LearnedPath:
     """Climbing out 8 km east of home heading north, then turning west to pass overhead."""
     return LearnedPath(
         hex_code,
@@ -54,6 +74,7 @@ def departure(hex_code: str) -> LearnedPath:
             Fix(at(8, 0), 3500, 300.0, 50.0),
             Fix(at(4, 0), 4000, 270.0, 30.0),
         ),
+        bound_deg,
     )
 
 
@@ -61,8 +82,17 @@ def learned(*paths: LearnedPath, clock: FakeClock | None = None) -> LearnedPaths
     return LearnedPaths(MemoryStore(paths), LIKENESS, 60, timedelta(days=90), clock or FakeClock())
 
 
+def recording(hits: MemoryStore, clock: FakeClock, misses: MemoryStore | None = None, bound: Bounds | None = None) -> PathRecorder:
+    bound = bound or Bounds(NORTH)
+    lessons = [
+        CameOverhead(LearnedPaths(hits, LIKENESS, 60, timedelta(days=90), clock), bound, 1.0, LOGGER),
+        MissedIt(LearnedPaths(misses or MemoryStore(), LIKENESS, 60, timedelta(days=90), clock), bound, 1.0, LOGGER),
+    ]
+    return PathRecorder(lessons, ClosestApproach(HOME, 60), HOME, 1.0, 25, 2, 60, clock)
+
+
 def test_a_plane_turning_onto_a_route_two_earlier_planes_flew_overhead_is_on_its_way():
-    finder = PathFinder(learned(departure("one"), departure("two")), HOME, 1.0, 2, 3)
+    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 1.0, 2, 3)
     turning = plane("new", at(8.1, -0.1), track_deg=310.0, altitude_ft=3400)
     assert not finder.sightings([turning])
     assert not finder.sightings([turning])
@@ -72,12 +102,12 @@ def test_a_plane_turning_onto_a_route_two_earlier_planes_flew_overhead_is_on_its
 
 
 def test_one_earlier_plane_is_not_enough_to_trust_a_route():
-    finder = PathFinder(learned(departure("one")), HOME, 1.0, 2, 1)
+    finder = PathFinder(learned(departure("one")), Bounds(), WAY, HOME, 1.0, 2, 1)
     assert not finder.sightings([plane("new", at(8, 0), track_deg=300.0, altitude_ft=3500)])
 
 
 def test_the_other_runway_or_a_plane_far_higher_is_not_on_the_route():
-    finder = PathFinder(learned(departure("one"), departure("two")), HOME, 1.0, 2, 1)
+    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 1.0, 2, 1)
     other_way = plane("other", at(8, 0), track_deg=120.0, altitude_ft=3500)
     high = plane("high", at(8, 0), track_deg=300.0, altitude_ft=12000)
     elsewhere = plane("elsewhere", at(8, 3), track_deg=300.0, altitude_ft=3500)
@@ -85,21 +115,21 @@ def test_the_other_runway_or_a_plane_far_higher_is_not_on_the_route():
 
 
 def test_a_plane_on_its_way_is_dropped_once_it_leaves_the_route():
-    finder = PathFinder(learned(departure("one"), departure("two")), HOME, 1.0, 2, 1)
+    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 1.0, 2, 1)
     assert finder.sightings([plane("new", at(8, 0), track_deg=300.0, altitude_ft=3500)])
     assert finder.sightings([plane("new", at(4, 0), track_deg=270.0, altitude_ft=4000)])
     assert not finder.sightings([plane("new", at(4, 2), track_deg=0.0, altitude_ft=4500)])
 
 
 def test_a_plane_inside_the_zone_is_left_to_the_zone():
-    finder = PathFinder(learned(departure("one"), departure("two")), HOME, 5.0, 2, 1)
+    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 5.0, 2, 1)
     assert not finder.sightings([plane("new", at(4, 0), track_deg=270.0, altitude_ft=4000)])
 
 
 def test_the_path_of_a_plane_that_came_overhead_is_learned_once_it_has_gone():
     clock = FakeClock()
     store = MemoryStore()
-    recorder = PathRecorder(LearnedPaths(store, LIKENESS, 60, timedelta(days=90), clock), HOME, 1.0, 25, 2, 60, clock, LOGGER)
+    recorder = recording(store, clock)
     for east_km in range(10, -4, -1):
         recorder.observe([plane("passing", at(east_km), track_deg=270.0)])
         clock.seconds += 4
@@ -109,20 +139,76 @@ def test_the_path_of_a_plane_that_came_overhead_is_learned_once_it_has_gone():
     assert path.fixes[-1].seconds_to_closest == 4.0
 
 
-def test_a_plane_that_never_came_within_the_zone_teaches_nothing():
+def test_a_plane_that_never_came_within_the_zone_or_pointed_at_it_teaches_nothing():
     clock = FakeClock()
-    store = MemoryStore()
-    recorder = PathRecorder(LearnedPaths(store, LIKENESS, 60, timedelta(days=90), clock), HOME, 1.0, 25, 2, 60, clock, LOGGER)
+    store, misses = MemoryStore(), MemoryStore()
+    recorder = recording(store, clock, misses)
     for east_km in range(10, -4, -1):
         recorder.observe([plane("wide", at(east_km, 3), track_deg=270.0)])
         clock.seconds += 4
     assert not store.paths
+    assert not misses.paths
+
+
+def turning_away(recorder: PathRecorder, clock: FakeClock, hex_code: str) -> None:
+    """Climbing out 10 km east heading straight for home, then turning north and away."""
+    for east_km in (10, 9.5, 9):
+        recorder.observe([plane(hex_code, at(east_km), track_deg=270.0)])
+        clock.seconds += 4
+    for north_km in range(1, 9):
+        recorder.observe([plane(hex_code, at(9, north_km), track_deg=0.0)])
+        clock.seconds += 4
+
+
+def test_a_plane_that_pointed_at_home_and_turned_away_is_learned_as_a_miss_where_it_pointed():
+    clock = FakeClock()
+    store, misses = MemoryStore(), MemoryStore()
+    recorder = recording(store, clock, misses)
+    turning_away(recorder, clock, "turned")
+    assert not store.paths
+    [missed] = misses.paths
+    assert missed.hex == "turned"
+    assert [round(f.location.distance_km(HOME), 1) for f in missed.fixes] == [10.0, 9.5, 9.0]
+    assert {f.track_deg for f in missed.fixes} == {270.0}
+
+
+def test_a_plane_that_came_overhead_is_not_a_miss_even_where_it_pointed_at_home():
+    clock = FakeClock()
+    store, misses = MemoryStore(), MemoryStore()
+    recorder = recording(store, clock, misses)
+    for east_km in range(10, -4, -1):
+        recorder.observe([plane("passing", at(east_km), track_deg=270.0)])
+        clock.seconds += 4
+    assert [p.hex for p in store.paths] == ["passing"]
+    assert not misses.paths
+
+
+def missed_from_the_east(hex_code: str, bound_deg: float = NORTH) -> LearnedPath:
+    return LearnedPath(hex_code, FakeClock().now(), (Fix(at(10), 4000, 270.0, 0.0), Fix(at(9), 4000, 270.0, 0.0)), bound_deg)
+
+
+def test_a_straight_line_from_where_two_planes_missed_is_not_believed():
+    rule = MissedBefore(learned(missed_from_the_east("one"), missed_from_the_east("two")), learned(), Bounds(NORTH), WAY, 2)
+    assert rule.excludes(plane("new", at(9.8), track_deg=272.0), 9.8, 60.0)
+    assert not rule.excludes(plane("elsewhere", at(-9), track_deg=90.0), 9.0, 60.0)
+
+
+def test_one_miss_is_not_enough_to_stop_believing_a_line():
+    rule = MissedBefore(learned(missed_from_the_east("one")), learned(), Bounds(NORTH), WAY, 2)
+    assert not rule.excludes(plane("new", at(9.8), track_deg=272.0), 9.8, 60.0)
+
+
+def test_a_spot_a_plane_has_come_overhead_from_is_still_believed_however_many_missed():
+    overhead = LearnedPath("over", FakeClock().now(), (Fix(at(9.5), 4000, 270.0, 30.0), Fix(at(5), 4000, 270.0, 15.0)), NORTH)
+    misses = learned(missed_from_the_east("one"), missed_from_the_east("two"), missed_from_the_east("three"))
+    rule = MissedBefore(misses, learned(overhead), Bounds(NORTH), WAY, 2)
+    assert not rule.excludes(plane("new", at(9.6), track_deg=270.0), 9.6, 60.0)
 
 
 def test_a_plane_that_vanishes_after_coming_overhead_is_learned_too():
     clock = FakeClock()
     store = MemoryStore()
-    recorder = PathRecorder(LearnedPaths(store, LIKENESS, 60, timedelta(days=90), clock), HOME, 1.0, 25, 2, 60, clock, LOGGER)
+    recorder = recording(store, clock)
     for east_km in (3, 2, 1, 0.2):
         recorder.observe([plane("lost", at(east_km), track_deg=270.0)])
         clock.seconds += 4
@@ -199,7 +285,7 @@ def test_a_paths_file_that_cannot_be_written_is_logged_and_the_paths_kept_in_mem
 def test_only_planes_in_the_air_with_a_position_within_reach_are_recorded():
     clock = FakeClock()
     store = MemoryStore()
-    recorder = PathRecorder(LearnedPaths(store, LIKENESS, 60, timedelta(days=90), clock), HOME, 1.0, 25, 2, 60, clock, LOGGER)
+    recorder = recording(store, clock)
     for east_km in range(3, -4, -1):
         recorder.observe(
             [
@@ -216,16 +302,92 @@ def test_only_planes_in_the_air_with_a_position_within_reach_are_recorded():
 
 
 def test_a_plane_with_no_position_is_not_on_its_way():
-    finder = PathFinder(learned(departure("one"), departure("two")), HOME, 1.0, 2, 1)
+    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 1.0, 2, 1)
     assert not finder.sightings([plane("new", at(8, 0), location=None, track_deg=300.0)])
 
 
 def test_a_plane_seen_more_often_than_every_couple_of_seconds_keeps_one_point_per_couple():
     clock = FakeClock()
     store = MemoryStore()
-    recorder = PathRecorder(LearnedPaths(store, LIKENESS, 60, timedelta(days=90), clock), HOME, 1.0, 25, 2, 60, clock, LOGGER)
+    recorder = recording(store, clock)
     for east_km in (3, 2.5, 2, 1.5, 1, 0.5, 0, -1, -2, -3):
         recorder.observe([plane("often", at(east_km), track_deg=270.0)])
         clock.seconds += 1
     [path] = store.paths
     assert len(path.fixes) == 3
+
+
+def test_a_plane_first_seen_overhead_has_no_way_in_to_learn():
+    clock = FakeClock()
+    store, misses = MemoryStore(), MemoryStore()
+    recorder = recording(store, clock, misses)
+    for east_km in (0.2, -1, -2, -3):
+        recorder.observe([plane("sudden", at(east_km), track_deg=270.0)])
+        clock.seconds += 4
+    assert not store.paths
+    assert not misses.paths
+
+
+def test_a_plane_bound_elsewhere_from_the_planes_that_came_overhead_is_not_on_their_route():
+    paths = learned(departure("one", EAST), departure("two", EAST))
+    on_the_line = plane("new", at(8, 0), track_deg=300.0, altitude_ft=3500)
+    assert not PathFinder(paths, Bounds(NORTH), WAY, HOME, 1.0, 2, 1).sightings([on_the_line])
+    assert PathFinder(paths, Bounds(EAST + 20), WAY, HOME, 1.0, 2, 1).sightings([on_the_line])
+    assert PathFinder(paths, Bounds(None), WAY, HOME, 1.0, 2, 1).sightings([on_the_line])
+
+
+def test_a_plane_is_only_looked_up_once_it_is_on_enough_paths():
+    bound = Bounds(EAST)
+    finder = PathFinder(learned(departure("one", EAST)), bound, WAY, HOME, 1.0, 2, 1)
+    assert not finder.sightings([plane("new", at(8, 0), track_deg=300.0, altitude_ft=3500)])
+    assert bound.asked == []
+
+
+def test_a_plane_followed_along_a_route_is_dropped_once_none_bound_its_way_remain():
+    paths = learned(departure("one", EAST), departure("two", EAST), departure("three", NORTH))
+    bound = Bounds(EAST)
+    finder = PathFinder(paths, bound, WAY, HOME, 1.0, 2, 1)
+    assert finder.sightings([plane("new", at(8, 0), track_deg=300.0, altitude_ft=3500)])
+    bound._default = 200.0
+    assert not finder.sightings([plane("new", at(4, 0), track_deg=270.0, altitude_ft=4000)])
+
+
+def test_planes_that_missed_bound_one_way_say_nothing_about_a_plane_bound_another():
+    misses = learned(missed_from_the_east("one", NORTH), missed_from_the_east("two", NORTH))
+    new = plane("new", at(9.8), track_deg=272.0)
+    assert MissedBefore(misses, learned(), Bounds(NORTH + 25), WAY, 2).excludes(new, 9.8, 60.0)
+    assert not MissedBefore(misses, learned(), Bounds(EAST), WAY, 2).excludes(new, 9.8, 60.0)
+
+
+def test_a_plane_whose_destination_is_not_known_is_believed_where_others_missed():
+    misses = learned(missed_from_the_east("one"), missed_from_the_east("two"))
+    assert not MissedBefore(misses, learned(), Bounds(None), WAY, 2).excludes(plane("new", at(9.8), track_deg=272.0), 9.8, 60.0)
+
+
+def test_only_a_plane_that_came_overhead_bound_the_same_way_keeps_a_spot_believed():
+    misses = learned(missed_from_the_east("one"), missed_from_the_east("two"))
+    elsewhere = LearnedPath("over", FakeClock().now(), (Fix(at(9.5), 4000, 270.0, 30.0), Fix(at(5), 4000, 270.0, 15.0)), EAST)
+    rule = MissedBefore(misses, learned(elsewhere), Bounds(NORTH), WAY, 2)
+    assert rule.excludes(plane("new", at(9.6), track_deg=270.0), 9.6, 60.0)
+
+
+def test_a_miss_by_a_plane_whose_destination_is_not_known_teaches_nothing():
+    clock = FakeClock()
+    misses = MemoryStore()
+    turning_away(recording(MemoryStore(), clock, misses, Bounds(None)), clock, "turned")
+    assert not misses.paths
+
+
+def test_learned_paths_keep_which_way_each_plane_was_bound(tmp_path):
+    clock = FakeClock()
+    store, misses = MemoryStore(), MemoryStore()
+    recorder = recording(store, clock, misses, Bounds(NORTH, turned=EAST))
+    turning_away(recorder, clock, "turned")
+    for east_km in range(10, -4, -1):
+        recorder.observe([plane("passing", at(east_km), track_deg=270.0)])
+        clock.seconds += 4
+    assert [(p.hex, p.bound_deg) for p in misses.paths] == [("turned", EAST)]
+    assert [(p.hex, p.bound_deg) for p in store.paths] == [("passing", NORTH)]
+    saved = JsonPathStore(tmp_path / "paths.json", LOGGER)
+    saved.save([*store.paths, departure("unknown")])
+    assert [p.bound_deg for p in saved.load()] == [NORTH, None]

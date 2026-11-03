@@ -57,9 +57,10 @@ class ApproachFinder:
     while its track turned no more than max_turn_deg. The further out a plane is, the
     more a small turn moves where its line crosses, and the more time it has to change
     course, so the more of a run it needs before it is believed. A plane any of the
-    exclusions rules out never counts (see LandsFirst and SteeredIn). A plane climbing
-    out after take-off does count: its departure route may still turn it away, but it is low and
-    only heard a minute or so out, so waiting for it to climb means no warning at all.
+    exclusions rules out never counts (see LandsFirst, SteeredIn and MissedBefore). A plane
+    climbing out after take-off does count: its departure route may still turn it away, but it
+    is low and only heard a minute or so out, so waiting for it to climb means no warning at
+    all. Once planes have been seen turning away from that spot, MissedBefore stops it.
     From then on it is followed through until it has passed its closest point, unless it
     turns enough that its line misses the zone by more than wander_km, so a small drift
     near the edge does not flick it off and on."""
