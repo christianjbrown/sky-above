@@ -1,11 +1,14 @@
 #!/bin/sh
 # Every check the code has to pass, run by the pre-push hook and by CI alike: the
-# compose file parses, the watcher is formatted, linted, strictly typed and fully
-# covered by its tests, and the receiver's browser code is linted and fully covered.
+# compose file parses, the watcher's image builds, the watcher is formatted, linted,
+# strictly typed and fully covered by its tests, and the receiver's browser code is
+# linted and fully covered.
 set -e
 cd "$(dirname "$0")/.."
 docker compose --env-file .env.example config --quiet
 echo "docker-compose.yml is valid"
+docker build --quiet watcher > /dev/null
+echo "the watcher image builds"
 (
   cd watcher
   uv run --frozen ruff format --check src tests
