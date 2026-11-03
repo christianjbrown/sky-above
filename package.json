@@ -1,0 +1,20 @@
+{
+  "name": "sky-above",
+  "version": "1.0.0",
+  "description": "Checks for the browser code in receiver/.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint",
+    "test": "vitest run --coverage",
+    "check": "npm run lint && npm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@vitest/coverage-v8": "^4.1.11",
+    "eslint": "^9.39.5",
+    "globals": "^17.12.0",
+    "jsdom": "^27.0.0",
+    "vitest": "^4.1.11"
+  }
+}

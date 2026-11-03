@@ -1,0 +1,3 @@
+#!/bin/sh
+# Run by the global pre-push hook. Nothing goes out unless tools/check.sh passes.
+exec "$(dirname "$0")/../tools/check.sh"

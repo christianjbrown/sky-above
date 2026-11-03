@@ -1,0 +1,5 @@
+# Plain http on the home network, which the Hub used before https and browsers can still use.
+server {
+    listen 80;
+    include /etc/nginx/card.locations;
+}

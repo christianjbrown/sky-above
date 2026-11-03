@@ -1,0 +1,50 @@
+[project]
+name = "flights-watcher"
+version = "0.1.0"
+description = "Casts a card to the Nest Hub whenever a plane flies near home"
+requires-python = ">=3.13"
+dependencies = ["pychromecast", "tzdata"]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.1",
+    "pytest",
+    "pytest-cov>=7.1.0",
+    "pyyaml",
+    "ruff>=0.17.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=flights_watcher --cov-branch --cov-report=term-missing:skip-covered"
+filterwarnings = ["error"]
+
+[tool.coverage.report]
+fail_under = 100
+exclude_also = ['if __name__ == "__main__":', "\\.\\.\\.$"]
+
+[tool.mypy]
+strict = true
+files = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flights_watcher"]
+
+[tool.ruff]
+line-length = 140
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "RUF", "S", "PIE", "PT", "RET", "ARG", "FURB", "PERF"]
+# An implementation of a Protocol takes every argument whether it needs it or not.
+ignore = ["ARG002"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S310", "PT018"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["flights_watcher", "fakes"]
