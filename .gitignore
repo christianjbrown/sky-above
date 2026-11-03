@@ -12,3 +12,4 @@ coverage/
 .coverage
 .ruff_cache/
 .mypy_cache/
+.deployed

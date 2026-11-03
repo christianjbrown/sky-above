@@ -218,6 +218,15 @@ Each followed flight costs roughly 50 cents to $2 in AeroAPI lookups.
   into the zone keep the card until they're 5 km away, so a plane passing through waits its turn.
   On a Nest Hub the emergency announcement turns the volume up to 8 out of 10 (never down) and puts
   it back afterwards.
+- 🔔 **It tells you when it's stuck.** A little watchdog checks on the watcher every minute and
+  shouts if it stops looking at the sky, keeps failing (say the screen has gone), or the antenna
+  hears nothing for an hour, then again once it's fine. Put an [ntfy](https://ntfy.sh) topic like
+  `https://ntfy.sh/<a-long-random-name>` after `ALERT_URL=` in `.env` and subscribe to it in the
+  ntfy app to get those on your phone. Without one they just land in `docker compose logs watchdog`.
+- 🔄 **It can update itself.** Run `tools/install-auto-deploy.sh` once on the Pi and it checks
+  GitHub every five minutes. New versions get built in the background, but only swapped in when
+  the card is clear, so nobody gets cut off mid-sentence. Quiet hours make sure there's a gap every
+  night.
 - 🎵 **Polite.** It only casts when the screen is idle, so it won't interrupt music, a film or a
   timer.
 - 🧪 **Try it without a plane.** Open `http://skyabove.local:8090/?demo` for a made-up one. Also
@@ -235,6 +244,8 @@ Run these on the Pi, from `~/sky-above`:
 | See what's running | `docker compose ps` |
 | Watch what it's doing | `docker compose logs -f watcher` |
 | Update Sky Above | `git pull && docker compose up -d --build` |
+| Have it update itself | `tools/install-auto-deploy.sh` (once) |
+| See what it updated | `journalctl -t sky-above-deploy` |
 | Update everything else | `docker compose pull && docker compose up -d` |
 | Check the power supply | `vcgencmd get_throttled` (0x0 is good) |
 
@@ -256,6 +267,7 @@ most likely to change:
 | `CARD_MIN_SECONDS` | The shortest time a plane's card is up | seconds | `60` |
 | `AIR_AMBULANCE_CALLSIGNS` | Which planes get the air ambulance look | the code their callsigns start with, like `HLE` in the UK | empty |
 | `POLICE_CALLSIGNS` | Which planes get the police look | the same, like `UKP` in the UK | empty |
+| `ALERT_URL` | Where the watchdog sends alerts | an ntfy topic address, or empty to only log them | empty |
 
 🗣️ **Picking a voice.** Have a listen on [Piper's samples page](https://rhasspy.github.io/piper-samples/),
 pick one, and use its name, which is the language, the voice and the quality joined by hyphens. A
@@ -308,6 +320,7 @@ Both need your exact position for MLAT. Both let you hide it from your public st
 |---|---|
 | `ultrafeeder` | Decodes the radio, draws the map at `:8080` |
 | `watcher` | Picks the plane and casts the card (the Python in this repo) |
+| `watchdog` | Checks the watcher every minute and sends alerts (the same Python) |
 | `receiver` | Serves the card page at `:8090` |
 | `piper` | Turns announcements into speech, on the Pi |
 | `piaware`, `flightradar24` | The optional feeders |
@@ -329,6 +342,12 @@ Both need your exact position for MLAT. Both let you hide it from your public st
   straight away, even mid-turn onto a departure route, where its straight line points somewhere
   else for a while. Each runway's route is learned separately, and the paths are kept in
   `paths.json` in the watcher's state, so a restart doesn't forget them.
+- It learns the misses too. A plane whose line pointed through the zone but then turned away
+  leaves a note of where it was and which way it was going (the direction of its destination).
+  Once two planes heading the same way have missed from the same spot, and none heading that way
+  has come overhead from there, a straight line from that spot stops counting. Planes off one
+  runway share the climb out and split by destination, so a flight that turns north and one that
+  comes your way are told apart. Those notes live in `missed.json`.
 - The card stays 30 seconds after the plane leaves (`LINGER_SECONDS`), and at least a minute in all
   (`CARD_MIN_SECONDS`).
 - Places in your own country (`HOME_COUNTRY`) have no flag. Leave it empty and it goes by the
