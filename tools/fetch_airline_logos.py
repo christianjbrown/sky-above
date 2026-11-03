@@ -46,6 +46,7 @@ ALIASES = {
     "BCS": "DHK",  # European Air Transport, flying for DHL
     "EJA": "NJE",  # NetJets in the US
     "LXJ": "FJO",  # Flexjet in the US
+    "SWN": "NPT",  # West Atlantic Sweden
 }
 # Airlines Soaring Symbols has no logo for, from Wikimedia, public domain or CC0. Each
 # file's licence was checked by hand; a non-free one never goes in.
@@ -54,6 +55,7 @@ EXTRAS = {
     "LOG": "https://upload.wikimedia.org/wikipedia/en/9/94/Loganair_logo.svg",  # Loganair
     "AIH": "https://upload.wikimedia.org/wikipedia/commons/e/e7/AirZeta_logo_2025.svg",  # AirZeta
     "AIZ": "https://upload.wikimedia.org/wikipedia/commons/9/9b/Arkia_Israeli_logo.svg",  # Arkia
+    "AJT": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Amerijet_Logo.svg",  # Amerijet International
     "ATC": "https://upload.wikimedia.org/wikipedia/en/0/0b/Air_Tanzania_logo.svg",  # Air Tanzania
     "AUR": "https://upload.wikimedia.org/wikipedia/commons/a/a2/Aurigny_logo.svg",  # Aurigny
     "AWC": "https://upload.wikimedia.org/wikipedia/en/7/75/Titan_Airways_logo.svg",  # Titan Airways
@@ -80,6 +82,7 @@ EXTRAS = {
     "NBT": "https://upload.wikimedia.org/wikipedia/commons/2/28/Norse.svg",  # Norse Atlantic Airways
     "NCR": "https://upload.wikimedia.org/wikipedia/commons/d/dd/National_Airlines_logo.svg",  # National Airlines
     "NJE": "https://upload.wikimedia.org/wikipedia/commons/9/9d/NetJets_logo.svg",  # NetJets
+    "NPT": "https://upload.wikimedia.org/wikipedia/commons/b/bf/West_atlantic_logo.svg",  # West Atlantic UK
     "OCN": "https://upload.wikimedia.org/wikipedia/commons/8/88/Logo_Discover_Airlines.svg",  # Discover Airlines
     "PIA": "https://upload.wikimedia.org/wikipedia/en/d/dd/Pakistan_International_Airlines_logo_%282004%29.svg",  # Pakistan International Airlines
     "QNT": "https://upload.wikimedia.org/wikipedia/en/2/26/Qanot_Sharq_logo.svg",  # Qanot Sharq
