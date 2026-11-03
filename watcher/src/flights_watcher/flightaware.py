@@ -71,6 +71,8 @@ def aeroapi_get(http: JsonHttp, url: str) -> Any:
     try:
         return http.get_json(url)
     except HTTPError as error:
+        # It holds the response, and with it the connection.
+        error.close()
         if error.code == 404:
             return None
         raise LookupFailed(str(error)) from error
