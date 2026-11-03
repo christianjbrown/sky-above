@@ -374,7 +374,7 @@ Place names not in the Latin alphabet need their fonts too: see `tools/fetch_map
 - Airports come from [OurAirports](https://ourairports.com/data/) (public domain). Refresh with
   `python3 tools/fetch_airports.py`.
 - Logos come from [Soaring Symbols](https://github.com/anhthang/soaring-symbols) (MIT), plus a few
-  public-domain ones from Wikimedia. Refresh with `python3 tools/fetch_airline_logos.py`.
+  public-domain and CC0 ones from Wikimedia. Refresh with `python3 tools/fetch_airline_logos.py`.
 - The map's scripts and fonts are fetched by `python3 tools/fetch_map_assets.py`.
 - The map runs on [MapLibre GL JS](https://maplibre.org) and [PMTiles](https://github.com/protomaps/PMTiles)
   (both BSD-3-Clause), styled with [Protomaps basemaps](https://github.com/protomaps/basemaps), in
