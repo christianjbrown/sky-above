@@ -399,7 +399,15 @@ def test_logging_display_logs_only_changes(caplog):
     assert [r.getMessage().split(" ")[0:2] for r in caplog.records] == [["would", "show"], ["would", "hand"]]
 
 
-def test_runner_survives_a_failing_tick_and_clears_on_stop():
+class Looks:
+    def __init__(self) -> None:
+        self.failures: list[str | None] = []
+
+    def looked(self, failure: str | None) -> None:
+        self.failures.append(failure)
+
+
+def test_runner_survives_a_failing_tick_reports_each_look_and_clears_on_stop():
     stop = threading.Event()
 
     class Flaky:
@@ -412,8 +420,10 @@ def test_runner_survives_a_failing_tick_and_clears_on_stop():
             stop.set()
 
     display = RecordingDisplay()
-    Runner(Flaky(), display, 0, LOG).run(stop)
+    looks = Looks()
+    Runner(Flaky(), display, 0, looks, LOG).run(stop)
     assert Flaky.calls == 2
+    assert looks.failures == ["ConnectionError: feed down", None]
     assert display.clears == 1
 
 
@@ -433,7 +443,7 @@ def test_runner_reports_the_same_failure_only_once_and_survives_a_hub_that_will_
         def clear(self):
             raise TimeoutError("no answer")
 
-    Runner(Failing(), StuckDisplay(), 0, LOG).run(stop)
+    Runner(Failing(), StuckDisplay(), 0, Looks(), LOG).run(stop)
     messages = [r.getMessage() for r in caplog.records]
     assert Failing.calls == 3
     assert messages.count("tick failed: ConnectionError: feed down") == 1

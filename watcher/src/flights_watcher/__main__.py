@@ -24,7 +24,7 @@ def main(environ: Mapping[str, str], stop: threading.Event) -> None:
         app.live_server.start()
     logger.info("watching %.1f km around home", settings.radius_km)
     try:
-        Runner(app.watcher, app.display, settings.poll_seconds, logger).run(stop)
+        Runner(app.watcher, app.display, settings.poll_seconds, app.status, logger).run(stop)
     finally:
         if app.live_server is not None:
             app.live_server.stop()

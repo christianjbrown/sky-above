@@ -124,6 +124,19 @@ services:
       # The flights to follow, in followed/flights.txt next to this file (see the README).
       - ./followed:/etc/flights/followed:ro
 
+  # Checks the watcher's /status.json every minute from outside it, and sends an
+  # alert to ALERT_URL when it stops looking at the sky, keeps failing, or the
+  # antenna hears nothing for an hour, and again when that is over.
+  watchdog:
+    build: ./watcher
+    container_name: watchdog
+    restart: unless-stopped
+    network_mode: host
+    command: ["/app/.venv/bin/python", "-m", "flights_watcher.watchdog"]
+    environment:
+      - STATUS_URL=http://localhost:${LIVE_PORT:-8091}/status.json
+      - ALERT_URL=${ALERT_URL:-}
+
   # Turns announcements into speech for the watcher, which saves them as clips
   # for the card to play on the Hub's own speaker. Only the Pi itself can reach it.
   piper:

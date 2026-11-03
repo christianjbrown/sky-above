@@ -1,8 +1,10 @@
-"""The card for a browser on the home network, for when the Hub is not the one looking."""
+"""The card for a browser on the home network, for when the Hub is not the one looking,
+and the watcher's status for the watchdog."""
 
 import json
 import logging
 import threading
+from collections.abc import Mapping
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Protocol
 
@@ -35,13 +37,11 @@ class LatestCard:
 
 
 class LiveServer:
-    """Answers GET /planes.json with the latest message, in a background thread, from
-    when it is started until it is stopped."""
+    """Answers a GET for each of its paths, such as /planes.json, with that snapshot's
+    latest, in a background thread, from when it is started until it is stopped."""
 
-    PATH = "/planes.json"
-
-    def __init__(self, snapshot: Snapshot, host: str, port: int, logger: logging.Logger) -> None:
-        self._handler = _handler_for(snapshot)
+    def __init__(self, snapshots: Mapping[str, Snapshot], host: str, port: int, logger: logging.Logger) -> None:
+        self._handler = _handler_for(snapshots)
         self._address = (host, port)
         self._logger = logger
         self._server: ThreadingHTTPServer | None = None
@@ -61,10 +61,11 @@ class LiveServer:
             self._server = None
 
 
-def _handler_for(snapshot: Snapshot) -> type[BaseHTTPRequestHandler]:
+def _handler_for(snapshots: Mapping[str, Snapshot]) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
-            if self.path.split("?", 1)[0] != LiveServer.PATH:
+            snapshot = snapshots.get(self.path.split("?", 1)[0])
+            if snapshot is None:
                 self.send_error(404)
                 return
             body = json.dumps(snapshot.latest()).encode()

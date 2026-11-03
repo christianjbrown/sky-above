@@ -25,7 +25,7 @@ def test_latest_card_remembers_the_last_message_until_cleared():
 @pytest.fixture
 def served():
     card = LatestCard()
-    server = LiveServer(card, "127.0.0.1", 0, LOG)
+    server = LiveServer({"/planes.json": card}, "127.0.0.1", 0, LOG)
     port = server.start()
     yield card, f"http://127.0.0.1:{port}"
     server.stop()
@@ -102,3 +102,15 @@ def test_stamped_adds_its_fields_to_every_message():
     stamped.clear()
     assert kept.shown == [{"type": "planes", "homeCountry": "GB"}]
     assert kept.cleared == 1
+
+
+def test_server_hands_out_each_of_its_snapshots_by_path():
+    card, status = LatestCard(), LatestCard()
+    status.show({"lastLook": "now"})
+    server = LiveServer({"/planes.json": card, "/status.json": status}, "127.0.0.1", 0, LOG)
+    port = server.start()
+    try:
+        with urlopen(f"http://127.0.0.1:{port}/status.json") as response:
+            assert json.load(response) == {"lastLook": "now"}
+    finally:
+        server.stop()
