@@ -40,6 +40,18 @@ class Standby:
         return self.waiting
 
 
+class Emergencies:
+    """Shows an emergency card while card is set, and keeps what it was asked about."""
+
+    def __init__(self) -> None:
+        self.card = None
+        self.asked: list[list] = []
+
+    def message(self, aircraft):
+        self.asked.append(list(aircraft))
+        return self.card
+
+
 def make_watcher(
     quiet: str = "",
     clock: FakeClock | None = None,
@@ -47,6 +59,7 @@ def make_watcher(
     standby: Standby | None = None,
     rare: tuple[str, ...] = ("helicopters", "military"),
     zone=None,
+    emergencies: Emergencies | None = None,
 ):
     clock = clock or FakeClock()
     sky, display = SkySource(), RecordingDisplay()
@@ -63,6 +76,7 @@ def make_watcher(
         rare=RareKinds(rare),
         due_seconds=45,
         surroundings=Zone(HOME, 50),
+        emergencies=emergencies or Emergencies(),
     )
     return watcher, sky, display, clock
 
@@ -286,6 +300,41 @@ def test_helicopters_and_military_planes_still_get_a_card_in_quiet_hours_unless_
     sky.planes = [plane("helicopter", lat=HOME.lat + 0.002, category="A7")]
     strict.tick()
     assert display.shown == []
+
+
+def test_an_emergency_takes_the_card_from_a_plane_overhead_until_it_is_over():
+    emergencies = Emergencies()
+    watcher, sky, display, clock = make_watcher(emergencies=emergencies, minimum=120)
+    sky.planes = [plane("overhead", lat=HOME.lat + 0.001)]
+    watcher.tick()
+    emergencies.card = {"type": "planes", "planes": [{"hex": "far", "emergency": {"kind": "general"}}]}
+    clock.seconds = 1
+    watcher.tick()
+    assert display.shown[-1] is emergencies.card
+    emergencies.card = None
+    clock.seconds = 2
+    watcher.tick()
+    assert display.shown[-1]["planes"] == [{"hex": "overhead"}]
+
+
+def test_the_sky_clearing_after_an_emergency_hands_the_hub_back_at_once():
+    emergencies = Emergencies()
+    watcher, _sky, display, _clock = make_watcher(emergencies=emergencies)
+    emergencies.card = {"type": "planes", "planes": [{"hex": "far"}]}
+    watcher.tick()
+    emergencies.card = None
+    watcher.tick()
+    assert display.clears == 1
+
+
+def test_an_emergency_is_looked_for_among_every_plane_heard_even_in_quiet_hours():
+    emergencies = Emergencies()
+    watcher, sky, display, _clock = make_watcher(quiet="00:00-23:59", emergencies=emergencies)
+    sky.planes = [plane("airliner", lat=HOME.lat + 0.001)]
+    emergencies.card = {"type": "planes", "planes": [{"hex": "airliner"}]}
+    watcher.tick()
+    assert [p.hex for p in emergencies.asked[-1]] == ["airliner"]
+    assert display.shown == [emergencies.card]
 
 
 def test_quiet_hours_parse_and_wrap_midnight():

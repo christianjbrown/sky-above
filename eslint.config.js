@@ -14,7 +14,8 @@ const receiverGlobals = {
   FollowedCard: "readonly",
   Speaker: "readonly",
   RightAway: "readonly",
-  WhenHubUnmuted: "readonly"
+  WhenHubUnmuted: "readonly",
+  HubVolume: "readonly"
 };
 
 export default [

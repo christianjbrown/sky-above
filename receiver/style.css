@@ -11,12 +11,30 @@
   --military: #c2cc7a;
   --battenburg-yellow: #ffd400;
   --late: #ff5c5c;
+  --emergency: #ff3b3b;
 }
 
 /* Air ambulances and the police wear their own colour, with the Battenburg check their
    vehicles on the ground have running along the top of the screen. */
 #screen.service-ambulance { --accent: var(--ambulance); --check: #00843d; }
 #screen.service-police { --accent: var(--police); --check: #1d4f91; }
+/* A plane in an emergency goes red, with a hazard band along the top of the screen. */
+#screen.emergency { --accent: var(--emergency); }
+#screen.emergency::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3vh;
+  background: repeating-linear-gradient(-45deg, var(--emergency) 0 3vh, #fff 0 6vh);
+}
+/* Its note says what is wrong, so the big lines give a little room, as on a followed flight. */
+#screen.emergency .note { font-weight: 800; }
+#screen.emergency .flight { font-size: 15vh; }
+#screen.emergency .route { font-size: 9vh; }
+#screen.emergency .aircraft { font-size: 5.5vh; }
+#screen.emergency .map-plane:not(.other) svg { fill: var(--emergency); }
 /* Military aircraft go olive. */
 #screen.service-military { --accent: var(--military); }
 #screen.service-ambulance::before,

@@ -27,6 +27,10 @@ class Aircraft:
     # who owns many planes ("Royal Air Force").
     military: bool = False
     operator: str | None = None
+    # The Mode A code the crew has set, such as "7700", and the plane's own ADS-B
+    # emergency status ("general", "nordo"), left out when it says "none".
+    squawk: str | None = None
+    emergency: str | None = None
 
     @classmethod
     def from_tar1090(cls, raw: dict[str, Any]) -> "Aircraft":
@@ -47,6 +51,8 @@ class Aircraft:
             category=_text(raw.get("category")),
             military=bool((_whole(raw.get("dbFlags")) or 0) & MILITARY_FLAG),
             operator=_text(raw.get("ownOp")),
+            squawk=_text(raw.get("squawk")),
+            emergency=None if raw.get("emergency") == "none" else _text(raw.get("emergency")),
         )
 
 

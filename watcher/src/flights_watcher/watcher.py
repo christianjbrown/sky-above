@@ -1,5 +1,6 @@
-"""One look at the sky: cast what is overhead, then once it has gone, whatever is on
-standby (a followed flight), or hand the screen back."""
+"""One look at the sky: cast a plane in an emergency if the antenna hears one, else what
+is overhead, then once it has gone, whatever is on standby (a followed flight), or hand
+the screen back."""
 
 import logging
 from collections.abc import Iterable, Sequence
@@ -36,6 +37,12 @@ class GracePeriod(Protocol):
 class Standby(Protocol):
     def message(self, aircraft: Sequence[Aircraft]) -> dict[str, Any] | None:
         """What to show while no plane is overhead, or None for nothing."""
+        ...
+
+
+class Emergency(Protocol):
+    def message(self, aircraft: Sequence[Aircraft]) -> dict[str, Any] | None:
+        """The card for planes in an emergency, however far away, or None while there are none."""
         ...
 
 
@@ -83,6 +90,7 @@ class Watcher:
         rare: RareAircraft,
         due_seconds: float,
         surroundings: SightingFinder,
+        emergencies: Emergency,
     ) -> None:
         self._source = source
         self._zone = zone
@@ -96,17 +104,27 @@ class Watcher:
         self._rare = rare
         self._due_seconds = due_seconds
         self._surroundings = surroundings
-        # "planes", "standby" or None for nothing of ours on screen.
+        self._emergencies = emergencies
+        # "emergency", "planes", "standby" or None for nothing of ours on screen.
         self._showing: str | None = None
         # The plane at the top of the card.
         self._current: str | None = None
 
     def tick(self) -> None:
         quiet = self._quiet_hours.is_quiet(self._clock.now().time())
+        heard = self._source.aircraft()
         # In quiet hours only the rare kinds, such as helicopters, get a card.
-        aircraft = [plane for plane in self._source.aircraft() if not quiet or self._rare.includes_aircraft(plane)]
+        aircraft = [plane for plane in heard if not quiet or self._rare.includes_aircraft(plane)]
+        # Looked for every time, even under an emergency, as finding them learns from each look.
         sightings = self._zone.sightings(aircraft)
         self._arrivals.note(sightings)
+        # An emergency goes before anything else, at any hour, wherever the plane is.
+        emergency = self._emergencies.message(heard)
+        if emergency is not None:
+            self._display.show(emergency)
+            self._showing, self._current = "emergency", None
+            self._linger.reset()
+            return
         if sightings and not self._waits_its_turn(sightings):
             self._current = sightings[0].aircraft.hex
             self._linger.seen(self._current)

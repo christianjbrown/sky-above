@@ -7,6 +7,9 @@
 // waits until the Hub says it is unmuted, then a little longer, so the start is
 // not lost. A Hub that is still muted after that was muted by someone in the
 // room, and its announcements are dropped rather than saved for later.
+//
+// An emergency is read out louder: on the Hub the volume goes up for the clip, if it
+// is lower, and back to where it was once the clip has finished.
 
 (function () {
   "use strict";
@@ -47,27 +50,61 @@
     setTimeout(play, Math.max(0, this.audibleAt - Date.now()));
   };
 
-  function Speaker(audibility) {
+  // In a browser the page cannot turn the computer up.
+  function FixedVolume() {}
+
+  FixedVolume.prototype.atLeast = function () { return null; };
+
+  // On the Hub, its system volume. Returns how to put it back, or null when it was
+  // already loud enough or cannot be told.
+  function HubVolume(context) { this.context = context; }
+
+  HubVolume.prototype.atLeast = function (level) {
+    var context = this.context;
+    var volume = context.getSystemVolume();
+    if (!volume || typeof volume.level !== "number" || volume.level >= level) { return null; }
+    var before = volume.level;
+    context.setSystemVolumeLevel(level);
+    return function () { context.setSystemVolumeLevel(before); };
+  };
+
+  function Speaker(audibility, volume) {
     this.audibility = audibility;
+    this.volume = volume || new FixedVolume();
     this.audio = new Audio();
     this.played = null;
+    this.restore = null;
   }
 
-  Speaker.prototype.say = function (url) {
+  // level, when given, is the least volume the clip is played at.
+  Speaker.prototype.say = function (url, level) {
     if (!url || url === this.played) { return; }
     this.played = url;
     var speaker = this;
-    this.audibility.whenAudible(function () { speaker.play(url); });
+    this.audibility.whenAudible(function () { speaker.play(url, level); });
   };
 
-  Speaker.prototype.play = function (url) {
+  Speaker.prototype.play = function (url, level) {
+    var speaker = this;
+    // A clip cut short by the next one never ends, so its volume goes back now.
+    this.volumeBack();
+    this.restore = level ? this.volume.atLeast(level) : null;
+    this.audio.onended = function () { speaker.volumeBack(); };
+    this.audio.onerror = this.audio.onended;
     this.audio.src = url;
     // A browser tab may refuse to play before anyone has clicked; the card still shows.
     var playing = this.audio.play();
-    if (playing && playing.catch) { playing.catch(function () {}); }
+    if (playing && playing.catch) { playing.catch(function () { speaker.volumeBack(); }); }
+  };
+
+  Speaker.prototype.volumeBack = function () {
+    var restore = this.restore;
+    this.restore = null;
+    if (restore) { restore(); }
   };
 
   window.Speaker = Speaker;
   window.RightAway = RightAway;
   window.WhenHubUnmuted = WhenHubUnmuted;
+  window.HubVolume = HubVolume;
 })();
