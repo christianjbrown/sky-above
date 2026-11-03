@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from zoneinfo import ZoneInfo
 
+from flights_watcher.announced import RememberedFlights
 from flights_watcher.approach import ApproachFinder, ClosestApproach, LandsFirst, OverheadAndApproaching, SteeredIn
 from flights_watcher.bound import DestinationBound, SameWay
 from flights_watcher.budget import BudgetedHttp, MonthlyBudget
@@ -117,6 +118,7 @@ from flights_watcher.speech import (
     WyomingSpeech,
 )
 from flights_watcher.standby import FollowedStandby, NothingOnStandby
+from flights_watcher.status import AllObservers, DailyTally, HeardSource, WatchStatus
 from flights_watcher.watcher import ArrivalLog, Watcher
 from flights_watcher.zone import Zone
 
@@ -184,7 +186,9 @@ SPEECH_CLIPS_KEPT = 50
 # it has been read out.
 OVERHEAD_NOW_KM = 0.5
 # Flights already announced, so one that drops back to second or leaves and returns stays quiet.
-PLANES_ANNOUNCED_REMEMBERED = 50
+# Longer than any flight is in sight, so a plane is introduced once whatever happens.
+ANNOUNCED_KEPT_FOR = timedelta(hours=6)
+ANNOUNCED_FILE = "announced.json"
 # Other planes are drawn on the map out to this far, which reaches past its edges
 # however far away the plane on the card is. Only the nearest few dozen.
 SURROUNDINGS_KM = 50
@@ -300,6 +304,7 @@ class App:
     watcher: Watcher
     display: Display
     live_server: LiveServer | None
+    status: WatchStatus
 
 
 def build(settings: Settings, clock: Clock, logger: logging.Logger) -> App:
@@ -309,12 +314,13 @@ def build(settings: Settings, clock: Clock, logger: logging.Logger) -> App:
     # Let through quiet hours, as rare enough to be worth waking up for.
     rare = RareKinds(settings.quiet_hours_except)
     voice = voices(settings, clock, rare, logger)
-    display, live_server = display_for(settings, clock, logger)
+    status = WatchStatus(clock)
+    display, live_server = display_for(settings, status, clock, logger)
     display = FanOutDisplay([display, EndOfShowing(voice.planes), InterruptedByEmergency(voice.planes)])
     watcher = watcher_for(
-        settings, http, found, voice, display, followed_standby(settings, found, voice, clock, logger), rare, clock, logger
+        settings, http, found, voice, display, followed_standby(settings, found, voice, clock, logger), rare, status, clock, logger
     )
-    return App(watcher, display, live_server)
+    return App(watcher, display, live_server, status)
 
 
 def lookups(settings: Settings, http: JsonHttp, clock: Clock, logger: logging.Logger) -> Lookups:
@@ -374,7 +380,7 @@ def voices(settings: Settings, clock: Clock, rare: RareKinds, logger: logging.Lo
         SpokenArrival(settings.home, OVERHEAD_NOW_KM),
         SpeechTiming(SPOKEN_CHARS_PER_SECOND, CLIP_MAKING_RATIO, launch_start, SHOWING_START_SECONDS),
         clips,
-        PLANES_ANNOUNCED_REMEMBERED,
+        RememberedFlights(pathlib.Path(settings.state_dir) / ANNOUNCED_FILE, ANNOUNCED_KEPT_FOR, clock, logger),
         logger,
     )
     quiet_hours = QuietHours.parse(settings.speech_quiet_hours)
@@ -425,7 +431,7 @@ def followed_standby(
     )
 
 
-def display_for(settings: Settings, clock: Clock, logger: logging.Logger) -> tuple[Display, LiveServer | None]:
+def display_for(settings: Settings, status: WatchStatus, clock: Clock, logger: logging.Logger) -> tuple[Display, LiveServer | None]:
     """The Cast device when there is an app to cast, else the log; and the live page if it has a port."""
     display: Display
     if settings.cast_app_id:
@@ -444,7 +450,7 @@ def display_for(settings: Settings, clock: Clock, logger: logging.Logger) -> tup
     if settings.live_port is not None:
         latest = LatestCard()
         # All interfaces, so the receiver container can reach it through the host.
-        live_server = LiveServer(latest, "0.0.0.0", settings.live_port, logger)  # noqa: S104
+        live_server = LiveServer({"/planes.json": latest, "/status.json": status}, "0.0.0.0", settings.live_port, logger)  # noqa: S104
         display = FanOutDisplay([display, latest])
     # Lets the card leave the flag off places in home's own country. Near a border the
     # nearest airport can be in the next country, so HOME_COUNTRY says for sure.
@@ -462,6 +468,7 @@ def watcher_for(
     display: Display,
     standby: FollowedStandby | NothingOnStandby,
     rare: RareKinds,
+    status: WatchStatus,
     clock: Clock,
     logger: logging.Logger,
 ) -> Watcher:
@@ -539,7 +546,7 @@ def watcher_for(
         ]
     )
     return Watcher(
-        source=Tar1090AircraftSource(settings.aircraft_url, http),
+        source=HeardSource(Tar1090AircraftSource(settings.aircraft_url, http), status),
         zone=ServicesStay(
             OverheadAndApproaching(zone, Observing(recorder, approaching), closest, OVERHEAD_SOON_SECONDS),
             services,
@@ -551,7 +558,7 @@ def watcher_for(
         display=display,
         quiet_hours=QuietHours.parse(settings.quiet_hours),
         linger=MinimumShowing(Linger(settings.linger_seconds, clock), settings.card_min_seconds, clock),
-        arrivals=ArrivalLog(logger),
+        arrivals=AllObservers([ArrivalLog(logger), DailyTally(status, clock, logger)]),
         clock=clock,
         standby=standby,
         due_seconds=APPROACH_DUE_SECONDS,

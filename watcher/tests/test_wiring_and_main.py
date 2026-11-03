@@ -17,6 +17,7 @@ from flights_watcher.lookups import NoPhotos
 from flights_watcher.rare import RareKinds
 from flights_watcher.speech import QuietVoice, Silence
 from flights_watcher.standby import FollowedStandby, NothingOnStandby
+from flights_watcher.status import WatchStatus
 
 LOGGER = logging.getLogger("test")
 
@@ -65,7 +66,7 @@ def test_followed_flights_need_aeroapi_as_well_as_a_list(tmp_path):
 def test_the_hub_is_muted_through_its_chime_only_when_asked(tmp_path, monkeypatch, mute, muted_launch):
     wrapped = []
     monkeypatch.setattr(wiring, "CoolingOffDevice", lambda hub, *_: wrapped.append(hub) or hub)
-    wiring.display_for(settings(tmp_path, CAST_APP_ID="APP", MUTE_CHIME=mute, LIVE_PORT=""), FakeClock(), LOGGER)
+    wiring.display_for(settings(tmp_path, CAST_APP_ID="APP", MUTE_CHIME=mute, LIVE_PORT=""), WatchStatus(FakeClock()), FakeClock(), LOGGER)
     assert isinstance(wrapped[0], MutedLaunchDevice) is muted_launch
 
 
@@ -116,7 +117,7 @@ def test_the_system_clock_tells_the_time_in_its_zone():
 def test_json_is_fetched_over_http_and_only_http():
     card = LatestCard()
     card.show({"type": "planes"})
-    server = LiveServer(card, "127.0.0.1", 0, LOGGER)
+    server = LiveServer({"/planes.json": card}, "127.0.0.1", 0, LOGGER)
     port = server.start()
     try:
         http = UrllibJsonHttp("test", 2, {"X-Test": "1"})
