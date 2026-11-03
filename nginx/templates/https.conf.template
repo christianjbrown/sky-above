@@ -1,0 +1,11 @@
+# The card over https, with the certificate the certs service keeps for
+# ${CERT_DOMAIN}. nginx/https.sh only switches this on once that certificate
+# exists, so a Pi without one still serves the card over http.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${CERT_DOMAIN};
+    ssl_certificate /certs/certificates/${CERT_DOMAIN}.crt;
+    ssl_certificate_key /certs/certificates/${CERT_DOMAIN}.key;
+    include /etc/nginx/card.locations;
+}

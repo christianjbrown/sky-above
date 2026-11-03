@@ -1,0 +1,14 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+# The map extracts: cut them with pmtiles, see the README.
+map/
+# Our own and family flights, which say when the house is empty.
+followed/
+# Test tooling.
+node_modules/
+coverage/
+.coverage
+.ruff_cache/
+.mypy_cache/

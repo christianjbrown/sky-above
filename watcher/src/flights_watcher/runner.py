@@ -1,0 +1,36 @@
+"""Ticks the watcher until told to stop, and survives a bad tick."""
+
+import logging
+import threading
+from typing import Protocol
+
+from flights_watcher.display import Display
+
+
+class Tickable(Protocol):
+    def tick(self) -> None: ...
+
+
+class Runner:
+    def __init__(self, watcher: Tickable, display: Display, interval_seconds: float, logger: logging.Logger) -> None:
+        self._watcher = watcher
+        self._display = display
+        self._interval_seconds = interval_seconds
+        self._logger = logger
+
+    def run(self, stop: threading.Event) -> None:
+        last_error: str | None = None
+        while not stop.is_set():
+            try:
+                self._watcher.tick()
+                last_error = None
+            except Exception as error:
+                message = f"{type(error).__name__}: {error}"
+                if message != last_error:
+                    self._logger.warning("tick failed: %s", message)
+                    last_error = message
+            stop.wait(self._interval_seconds)
+        try:
+            self._display.clear()
+        except Exception as error:
+            self._logger.warning("could not hand the Hub back on shutdown: %s", error)

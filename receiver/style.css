@@ -1,0 +1,177 @@
+:root {
+  --sky-top: #0b1a33;
+  --sky-bottom: #10284d;
+  --text: #f4f7fb;
+  --muted: #9fb3cf;
+  --accent: #ffb347;
+  --panel: rgba(255, 255, 255, 0.06);
+  --line: rgba(255, 255, 255, 0.12);
+  --ambulance: #3ddc84;
+  --police: #6aa8ff;
+  --military: #c2cc7a;
+  --battenburg-yellow: #ffd400;
+  --late: #ff5c5c;
+}
+
+/* Air ambulances and the police wear their own colour, with the Battenburg check their
+   vehicles on the ground have running along the top of the screen. */
+#screen.service-ambulance { --accent: var(--ambulance); --check: #00843d; }
+#screen.service-police { --accent: var(--police); --check: #1d4f91; }
+/* Military aircraft go olive. */
+#screen.service-military { --accent: var(--military); }
+#screen.service-ambulance::before,
+#screen.service-police::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3vh;
+  background: conic-gradient(var(--battenburg-yellow) 25%, var(--check) 0 50%, var(--battenburg-yellow) 0 75%, var(--check) 0) 0 0 / 6vh 3vh;
+}
+
+* { box-sizing: border-box; margin: 0; }
+
+html, body {
+  height: 100%;
+  background: linear-gradient(160deg, var(--sky-top), var(--sky-bottom));
+  color: var(--text);
+  font-family: "Google Sans", Roboto, system-ui, sans-serif;
+  overflow: hidden;
+}
+
+#screen {
+  height: 100vh;
+  padding: 4vh 4vw;
+  display: grid;
+  /* One cell exactly the size of the screen, so long lines shrink rather than widen it. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 2.4vh;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Before the first plane arrives */
+.waiting-note { display: none; place-self: center; text-align: center; font-size: 8vh; color: var(--muted); }
+.waiting-note .eyebrow { font-size: 5vh; margin-bottom: 2vh; }
+#screen.waiting .waiting-note { display: block; }
+#screen.waiting .card { display: none; }
+
+/* Everything is sized for a small screen read from across the room. */
+.card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  min-width: 0;
+}
+
+/* Text that would overflow is shrunk to fit by app.js */
+/* The right padding leaves room for the last letter's overhang, which overflow would clip. */
+.fit { white-space: nowrap; overflow: hidden; line-height: 1.1; padding-right: 0.08em; }
+
+.top {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42%;
+  gap: 3vw;
+  margin-bottom: 3vh;
+}
+.words { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
+
+.map { border-radius: 2.5vh; overflow: hidden; background: var(--panel); position: relative; }
+.map::after {
+  content: "© OpenStreetMap contributors, Protomaps";
+  position: absolute;
+  right: 1vh;
+  bottom: 0.6vh;
+  font-size: 1.8vh;
+  color: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+}
+.map.failed { display: none; }
+.top:has(.map.failed) { grid-template-columns: minmax(0, 1fr); }
+.map-home {
+  width: 3.4vh;
+  height: 3.4vh;
+  border-radius: 50%;
+  background: #fff;
+  border: 0.9vh solid var(--accent);
+  box-shadow: 0 0 0 0.5vh rgba(0, 0, 0, 0.4);
+}
+.map-airport {
+  padding: 0.3vh 0.9vh;
+  border-radius: 1vh;
+  background: var(--sky-top);
+  border: 0.3vh solid var(--accent);
+  color: var(--text);
+  font-size: 2.4vh;
+  font-weight: 700;
+}
+.map-plane { width: 7vh; height: 7vh; z-index: 2; }
+.map-plane svg { width: 100%; height: 100%; fill: #fff; stroke: #0b1a33; stroke-width: 0.8; filter: drop-shadow(0 0 0.6vh rgba(0, 0, 0, 0.6)); }
+.map-plane.other { opacity: 0.7; z-index: 1; }
+.map-plane.other svg { fill: var(--muted); }
+.map-plane[data-service="ambulance"] svg { fill: var(--ambulance); }
+.map-plane[data-service="police"] svg { fill: var(--police); }
+.map-plane[data-service="military"] svg { fill: var(--military); }
+
+.operator { display: flex; align-items: center; gap: 2.5vw; min-width: 0; }
+.logo {
+  flex: none;
+  width: 15vh;
+  height: 15vh;
+  border-radius: 2.5vh;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  padding: 2vh;
+}
+.logo img { width: 100%; height: 100%; object-fit: contain; }
+.logo.none { background: var(--panel); color: var(--muted); font-size: 8vh; padding: 0; }
+.logo.none img { display: none; }
+.logo.none::after { content: "\2708"; }
+.logo.none.helicopter::after { content: "\1F681"; }
+.airline { font-size: 9vh; font-weight: 700; color: var(--accent); min-width: 0; flex: 1; }
+
+.flight { font-size: 20vh; font-weight: 800; line-height: 1; }
+
+/* Departure on one line, arrow and destination on the next, so both cities fit in full. */
+.route { font-size: 10.5vh; font-weight: 500; }
+.route b { font-weight: 800; }
+.route .arrow { color: var(--accent); margin-right: 1.5vw; }
+.route.none { display: none; }
+
+.aircraft { font-size: 6.5vh; color: var(--muted); }
+.aircraft:empty { display: none; }
+/* A followed flight's second line: why it is late, or where its plane is coming from. */
+.note { font-size: 5vh; color: var(--accent); }
+.late, .stats .late dt, .stats .late dd, .stats .late .imperial { color: var(--late); }
+.note:empty { display: none; }
+
+/* A followed flight swaps the street map for one of its whole route. */
+#screen.followed #map { display: none; }
+#screen:not(.followed) #route-map { display: none; }
+/* It has a status line and a note as well, so the big lines give a little room. */
+#screen.followed .flight { font-size: 15vh; }
+#screen.followed .route { font-size: 9vh; }
+#screen.followed .aircraft { font-size: 5.5vh; }
+#screen.followed .unit { font-size: 0.55em; }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2vw;
+}
+.stats div { min-width: 0; }
+.stats dt { font-size: 4.5vh; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.stats dd { font-size: 12vh; font-weight: 800; line-height: 1.05; white-space: nowrap; }
+.stats dd small { font-size: 5.5vh; color: var(--muted); font-weight: 600; margin-left: 0.5vw; }
+.stats dd .imperial { display: block; font-size: 5.5vh; color: var(--muted); font-weight: 600; }

@@ -1,0 +1,30 @@
+# The card's locations, shared by the http and https servers. The nginx image
+# fills in ${LIVE_PORT} from the environment at start-up and leaves nginx's own
+# variables alone.
+root /usr/share/nginx/html;
+index index.html;
+
+# The Hub keeps pages it has no instructions for and can run an old card for
+# days, so it has to check for a new one every time it loads.
+location / {
+    try_files $uri $uri/ =404;
+    add_header Cache-Control no-cache always;
+}
+
+# The map extract of the area round home, kept outside the page folder because it is too big for git.
+location /map/ {
+    alias /srv/map/;
+}
+
+# Announcement clips the watcher makes with Piper, played by the page.
+location /speech/ {
+    alias /srv/speech/;
+    default_type audio/wav;
+    add_header Cache-Control no-store always;
+}
+
+# The watcher's live card, so a browser page can follow along without a Hub.
+location = /live/planes.json {
+    proxy_pass http://host.docker.internal:${LIVE_PORT}/planes.json;
+    add_header Cache-Control no-store always;
+}

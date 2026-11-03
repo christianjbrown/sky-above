@@ -1,0 +1,200 @@
+# Everything that runs on the Pi. Settings come from .env next to this file
+# (copy .env.example), which stays on the Pi and out of git.
+
+# Fixed rather than taken from the folder's name, so the volumes (remembered routes,
+# this month's AeroAPI counts, graphs) keep their names wherever the repo is checked out.
+name: flights
+
+services:
+  # Decodes ADS-B from the SDR stick with readsb, and serves the tar1090 map
+  # on port 8080 and the graphs1090 stats under /graphs1090.
+  ultrafeeder:
+    image: ghcr.io/sdr-enthusiasts/docker-adsb-ultrafeeder:latest
+    container_name: ultrafeeder
+    hostname: ultrafeeder
+    restart: unless-stopped
+    device_cgroup_rules:
+      - "c 189:* rwm"
+    ports:
+      - "${MAP_PORT:-8080}:80"
+    environment:
+      - TZ=${FEEDER_TZ:-UTC}
+      - READSB_DEVICE_TYPE=rtlsdr
+      - READSB_GAIN=auto
+      - READSB_LAT=${FEEDER_LAT:-}
+      - READSB_LON=${FEEDER_LONG:-}
+      - READSB_ALT=${FEEDER_ALT:-}
+      - READSB_RX_LOCATION_ACCURACY=2
+      - READSB_STATS_RANGE=true
+      - UPDATE_TAR1090=true
+      - TAR1090_PAGETITLE=${FEEDER_NAME:-Flights}
+      - TAR1090_PLANECOUNTINTITLE=true
+      - TAR1090_MESSAGERATEINTITLE=true
+      - TAR1090_ENABLE_AC_DB=true
+      - TAR1090_FLIGHTAWARELINKS=true
+      - TAR1090_USEROUTEAPI=true
+      - GRAPHS1090_DARKMODE=true
+    volumes:
+      - globe_history:/var/globe_history
+      - graphs1090:/var/lib/collectd
+      - /proc/diskstats:/proc/diskstats:ro
+      - /dev/bus/usb:/dev/bus/usb
+    tmpfs:
+      - /run:exec,size=256M
+      - /var/log:size=32M
+
+  # Feeds FlightAware from ultrafeeder's Beast output and hands MLAT results
+  # back to it. Runs when COMPOSE_PROFILES includes "flightaware".
+  piaware:
+    profiles: [flightaware]
+    image: ghcr.io/sdr-enthusiasts/docker-piaware:latest
+    container_name: piaware
+    restart: unless-stopped
+    depends_on: [ultrafeeder]
+    environment:
+      - TZ=${FEEDER_TZ:-UTC}
+      - RECEIVER_TYPE=relay
+      - BEASTHOST=ultrafeeder
+      - BEASTPORT=30005
+      - MLAT_RESULTS_BEASTHOST=ultrafeeder
+      - MLAT_RESULTS_BEASTPORT=31004
+      - FEEDER_ID=${PIAWARE_FEEDER_ID:-}
+    tmpfs:
+      - /run:exec,size=64M
+      - /var/log
+
+  # Feeds Flightradar24, with its status page on port 8754. Runs when
+  # COMPOSE_PROFILES includes "flightradar24".
+  flightradar24:
+    profiles: [flightradar24]
+    image: ghcr.io/sdr-enthusiasts/docker-flightradar24:latest
+    container_name: flightradar24
+    restart: unless-stopped
+    depends_on: [ultrafeeder]
+    ports:
+      - "${FR24_STATUS_PORT:-8754}:8754"
+    environment:
+      - TZ=${FEEDER_TZ:-UTC}
+      - BEASTHOST=ultrafeeder
+      - FR24KEY=${FR24KEY:-}
+
+  # Casts a card to the Nest Hub while a plane is within ZONE_RADIUS_KM of
+  # home. Host networking, because finding the Hub uses mDNS, which does not
+  # cross Docker's bridge network; so it reaches the map on its host port.
+  watcher:
+    build: ./watcher
+    container_name: watcher
+    restart: unless-stopped
+    network_mode: host
+    depends_on: [ultrafeeder]
+    environment:
+      - AIRCRAFT_URL=http://localhost:${MAP_PORT:-8080}/data/aircraft.json
+      - HOME_LAT=${FEEDER_LAT:-}
+      - HOME_LON=${FEEDER_LONG:-}
+      - ZONE_RADIUS_KM=${ZONE_RADIUS_KM:-2}
+      - LINGER_SECONDS=${LINGER_SECONDS:-30}
+      - CARD_MIN_SECONDS=${CARD_MIN_SECONDS:-60}
+      - POLL_SECONDS=${POLL_SECONDS:-1}
+      - MAX_CARDS=${MAX_CARDS:-3}
+      - QUIET_HOURS=${QUIET_HOURS-00:00-08:00}
+      - TZ=${FEEDER_TZ:-UTC}
+      - CAST_DEVICE_NAME=${CAST_DEVICE_NAME:-}
+      - CAST_APP_ID=${CAST_APP_ID:-}
+      - CAST_TIMEOUT_SECONDS=${CAST_TIMEOUT_SECONDS:-10}
+      - ROUTE_API_URL=${ROUTE_API_URL-https://api.adsbdb.com/v0}
+      - AEROAPI_KEY=${AEROAPI_KEY:-}
+      - AEROAPI_URL=${AEROAPI_URL:-https://aeroapi.flightaware.com/aeroapi}
+      - AEROAPI_MONTHLY_LIMIT=${AEROAPI_MONTHLY_LIMIT:-1000}
+      - STATE_DIR=/var/lib/flights/state
+      - PHOTO_API_URL=${PHOTO_API_URL:-}
+      - LIVE_PORT=${LIVE_PORT:-8091}
+      - SPEECH_SERVER=${SPEECH_SERVER-localhost:${SPEECH_PORT:-10200}}
+      - SPEECH_DIR=/var/lib/flights/speech
+      - SPEECH_QUIET_HOURS=${SPEECH_QUIET_HOURS-00:00-08:00}
+      - MUTE_CHIME=${MUTE_CHIME:-true}
+      - FOLLOWED_FILE=/etc/flights/followed/flights.txt
+      - FOLLOWED_MONTHLY_LIMIT=${FOLLOWED_MONTHLY_LIMIT:-600}
+      - AIR_AMBULANCE_CALLSIGNS=${AIR_AMBULANCE_CALLSIGNS:-}
+      - POLICE_CALLSIGNS=${POLICE_CALLSIGNS:-}
+      - QUIET_HOURS_EXCEPT=${QUIET_HOURS_EXCEPT-helicopters,military}
+      - HOME_COUNTRY=${HOME_COUNTRY:-}
+    volumes:
+      - speech:/var/lib/flights/speech
+      - watcher_state:/var/lib/flights/state
+      # The flights to follow, in followed/flights.txt next to this file (see the README).
+      - ./followed:/etc/flights/followed:ro
+
+  # Turns announcements into speech for the watcher, which saves them as clips
+  # for the card to play on the Hub's own speaker. Only the Pi itself can reach it.
+  piper:
+    image: rhasspy/wyoming-piper:latest
+    container_name: piper
+    restart: unless-stopped
+    command: --voice ${PIPER_VOICE:-en_GB-southern_english_female-low}
+    ports:
+      - "127.0.0.1:${SPEECH_PORT:-10200}:10200"
+    volumes:
+      - piper_data:/data
+
+  # Serves the Nest Hub card (receiver/) on the home network only, over http
+  # and, once the certs service has a certificate, https. The Cast app is
+  # unpublished, so the page never has to live on the internet: CERT_DOMAIN
+  # points at the Pi's home address. It also passes the watcher's live card
+  # through to browsers, reaching the watcher on the host.
+  receiver:
+    image: nginx:alpine
+    container_name: receiver
+    restart: unless-stopped
+    ports:
+      - "${RECEIVER_PORT:-8090}:80"
+      - "${HTTPS_PORT:-443}:443"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - LIVE_PORT=${LIVE_PORT:-8091}
+      - CERT_DOMAIN=${CERT_DOMAIN:-}
+      # Templates render into /etc/nginx, so the shared locations and the https
+      # server land beside conf.d rather than in it.
+      - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
+    volumes:
+      - ./receiver:/usr/share/nginx/html:ro
+      - ./map:/srv/map:ro
+      - speech:/srv/speech:ro
+      - certs:/certs:ro
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - ./nginx/https.sh:/docker-entrypoint.d/40-https.sh:ro
+
+  # Gets and renews the Let's Encrypt certificate for CERT_DOMAIN, proving it
+  # owns the name with a short-lived DNS record made through Spaceship's API,
+  # so nothing on the Pi has to be reachable from the internet. It checks twice
+  # a day and only renews once a third of the certificate's life is left.
+  certs:
+    image: goacme/lego:v5.5.2
+    container_name: certs
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          if [ -z "$$CERT_DOMAIN" ]; then sleep 86400; continue; fi
+          if /lego run --domains "$$CERT_DOMAIN" --dns spaceship --accept-tos --path /certs; then
+            sleep 43200
+          else
+            sleep 3600
+          fi
+        done
+    environment:
+      - CERT_DOMAIN=${CERT_DOMAIN:-}
+      - SPACESHIP_API_KEY=${SPACESHIP_API_KEY:-}
+      - SPACESHIP_API_SECRET=${SPACESHIP_API_SECRET:-}
+    volumes:
+      - certs:/certs
+
+volumes:
+  globe_history:
+  graphs1090:
+  piper_data:
+  speech:
+  watcher_state:
+  certs:

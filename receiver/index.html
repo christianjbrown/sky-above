@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sky Above</title>
+  <link rel="stylesheet" href="vendor/maplibre-gl.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+</head>
+<body>
+  <main id="screen" class="waiting">
+    <section class="waiting-note">
+      <p class="eyebrow">Sky Above</p>
+      <p id="waiting-line">Watching the sky&hellip;</p>
+    </section>
+
+    <section class="card" aria-live="polite">
+      <div class="top">
+        <div class="words">
+          <header class="operator">
+            <span class="logo"><img id="logo" alt=""></span>
+            <span class="airline fit" id="airline"></span>
+          </header>
+          <h1 class="flight fit" id="flight"></h1>
+          <div class="route" id="route">
+            <p class="fit" id="route-from"></p>
+            <p class="fit" id="route-to"></p>
+          </div>
+          <p class="aircraft fit" id="aircraft"></p>
+          <p class="note fit" id="note"></p>
+        </div>
+        <div class="map" id="map"></div>
+        <div class="map route-map" id="route-map"></div>
+      </div>
+      <dl class="stats">
+        <div><dt id="stat-1-label"></dt><dd id="stat-1"></dd></div>
+        <div><dt id="stat-2-label"></dt><dd id="stat-2"></dd></div>
+        <div><dt id="stat-3-label"></dt><dd id="stat-3"></dd></div>
+      </dl>
+    </section>
+  </main>
+  <script src="vendor/maplibre-gl.js"></script>
+  <script src="vendor/pmtiles.js"></script>
+  <script src="vendor/basemaps.js"></script>
+  <script src="parts.js"></script>
+  <script src="map.js"></script>
+  <script src="routemap.js"></script>
+  <script src="followed.js"></script>
+  <script src="speaker.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
