@@ -6,12 +6,14 @@ else. But planes off the same runway fly the same route, so once two earlier pla
 come overhead along it, a new one at the same spot, height and heading is on its way too,
 turn and all. Each runway, and each direction the airport is working in, is a route of its
 own, learned separately, and a plane on a route that has never brought anything overhead
-matches nothing.
+matches nothing. Planes off one runway share the climb out and split later, by where they are
+going, so each path keeps which way its plane was bound, and a plane is only on the paths of
+planes bound the same way as it (see flights_watcher.bound).
 
 The misses are learned too. A plane whose straight line ran through the zone but which then
 turned away without coming in leaves the points where it looked to be on its way, and once
-two have missed from the same spot, with nothing from there ever coming overhead, a straight
-line from that spot is no longer believed (see MissedBefore)."""
+two bound the same way have missed from the same spot, with nothing bound that way ever coming
+overhead from there, a straight line from that spot is no longer believed (see MissedBefore)."""
 
 import json
 import logging
@@ -25,6 +27,7 @@ from typing import Protocol
 
 from flights_watcher.aircraft import Aircraft
 from flights_watcher.approach import SightingFinder
+from flights_watcher.bound import Bound, SameWay
 from flights_watcher.clock import Clock
 from flights_watcher.geo import Location
 from flights_watcher.zone import Sighting
@@ -45,6 +48,18 @@ class LearnedPath:
     hex: str
     learned_at: datetime
     fixes: tuple[Fix, ...]
+    # Which way the plane was bound, as a compass bearing, if that was known.
+    bound_deg: float | None = None
+
+
+@dataclass(frozen=True)
+class Passing:
+    """An earlier plane whose path a plane is on: which way it was bound, and how long it
+    took from there to its closest point."""
+
+    hex: str
+    bound_deg: float | None
+    seconds_to_closest: float
 
 
 @dataclass(frozen=True)
@@ -89,6 +104,7 @@ class JsonPathStore:
                     tuple(
                         Fix(Location(lat, lon), int(alt), float(track), float(seconds)) for lat, lon, alt, track, seconds in entry["fixes"]
                     ),
+                    entry.get("boundDeg"),
                 )
                 for entry in saved
             ]
@@ -103,6 +119,7 @@ class JsonPathStore:
             {
                 "hex": path.hex,
                 "learnedAt": path.learned_at.isoformat(),
+                "boundDeg": None if path.bound_deg is None else round(path.bound_deg, 1),
                 "fixes": [
                     [
                         round(f.location.lat, 5),
@@ -140,29 +157,30 @@ class LearnedPaths:
         self._paths = [*[p for p in self._paths if p.learned_at >= since][-(self._max_paths - 1) :], path]
         self._store.save(self._paths)
 
-    def on(self, plane: Aircraft) -> dict[str, float]:
-        """For each earlier plane whose path this one is on, how long it took from here to its closest point."""
-        found: dict[str, float] = {}
+    def on(self, plane: Aircraft) -> list[Passing]:
+        """The earlier planes whose paths this one is on, one each, wherever they were bound."""
+        found: dict[str, Passing] = {}
         for path in self._paths:
             fix = next((f for f in path.fixes if self._likeness.matches(plane, f)), None)
             if fix is not None:
-                found[path.hex] = fix.seconds_to_closest
-        return found
+                found[path.hex] = Passing(path.hex, path.bound_deg, fix.seconds_to_closest)
+        return list(found.values())
 
 
 class Flight:
     """One plane's track near home so far: where it has been, where its line ran through
     the zone, and when it was closest."""
 
-    def __init__(self, now: float) -> None:
+    def __init__(self, plane: Aircraft, now: float) -> None:
+        self.plane = plane
         self.fixes: list[tuple[float, Fix]] = []
         self.aimed: list[tuple[float, Fix]] = []
         self.closest_km = math.inf
         self.closest_at = now
         self.last_seen = now
 
-    def note(self, fix: Fix, distance_km: float, aimed: bool, now: float, every_seconds: float) -> None:
-        self.last_seen = now
+    def note(self, plane: Aircraft, fix: Fix, distance_km: float, aimed: bool, now: float, every_seconds: float) -> None:
+        self.plane, self.last_seen = plane, now
         if not self.fixes or now - self.fixes[-1][0] >= every_seconds:
             self.fixes.append((now, fix))
         if aimed and (not self.aimed or now - self.aimed[-1][0] >= every_seconds):
@@ -186,10 +204,11 @@ class Lesson(Protocol):
 
 
 class CameOverhead:
-    """The path a plane that came within radius_km flew to get there."""
+    """The path a plane that came within radius_km flew to get there, and which way it was bound."""
 
-    def __init__(self, paths: LearnedPaths, radius_km: float, logger: logging.Logger) -> None:
+    def __init__(self, paths: LearnedPaths, bound: Bound, radius_km: float, logger: logging.Logger) -> None:
         self._paths = paths
+        self._bound = bound
         self._radius_km = radius_km
         self._logger = logger
 
@@ -198,24 +217,29 @@ class CameOverhead:
             return
         fixes = flight.timed((at, fix) for at, fix in flight.fixes if at < flight.closest_at)
         if len(fixes) >= 2:
-            self._paths.add(LearnedPath(hex_code, learned_at, fixes))
+            self._paths.add(LearnedPath(hex_code, learned_at, fixes, self._bound.of(flight.plane)))
             self._logger.info("learned the path %s flew overhead, %d points", hex_code, len(fixes))
 
 
 class MissedIt:
     """Where a plane was while its line ran through the zone, if it then went past without
-    coming within radius_km."""
+    coming within radius_km. Only a plane whose destination is known teaches anything, since
+    a miss says nothing about planes bound elsewhere."""
 
-    def __init__(self, misses: LearnedPaths, radius_km: float, logger: logging.Logger) -> None:
+    def __init__(self, misses: LearnedPaths, bound: Bound, radius_km: float, logger: logging.Logger) -> None:
         self._misses = misses
+        self._bound = bound
         self._radius_km = radius_km
         self._logger = logger
 
     def learn(self, hex_code: str, flight: Flight, learned_at: datetime) -> None:
         if flight.closest_km <= self._radius_km or not flight.aimed:
             return
+        bound_deg = self._bound.of(flight.plane)
+        if bound_deg is None:
+            return
         fixes = flight.timed(flight.aimed)
-        self._misses.add(LearnedPath(hex_code, learned_at, fixes))
+        self._misses.add(LearnedPath(hex_code, learned_at, fixes, bound_deg))
         self._logger.info("learned where %s looked on its way but missed, %d points", hex_code, len(fixes))
 
 
@@ -258,9 +282,9 @@ class PathRecorder:
             distance_km = self._centre.distance_km(plane.location)
             if distance_km > self._path_km:
                 continue
-            flight = self._flying.setdefault(plane.hex, Flight(now))
+            flight = self._flying.setdefault(plane.hex, Flight(plane, now))
             fix = Fix(plane.location, plane.altitude_ft, plane.track_deg, 0.0)
-            flight.note(fix, distance_km, distance_km > self._radius_km and self._aimed(plane), now, self._every_seconds)
+            flight.note(plane, fix, distance_km, distance_km > self._radius_km and self._aimed(plane), now, self._every_seconds)
             if flight.gone_past(distance_km, self._radius_km):
                 self._finish(plane.hex)
         for hex_code in [h for h, f in self._flying.items() if now - f.last_seen > self._gone_seconds]:
@@ -277,26 +301,43 @@ class PathRecorder:
 
 
 class MissedBefore:
-    """A plane where at least min_misses earlier planes looked to be on their way and then
-    missed, when no plane from there has ever come overhead: a departure route that turns
-    away before home, say. Its straight line has been wrong before, so it is not believed."""
+    """A plane where at least min_misses earlier planes bound the same way looked to be on
+    their way and then missed, when no plane bound that way has come overhead from there: a
+    departure route that turns away before home, say. Its straight line has been wrong
+    before, so it is not believed. A plane whose destination is not known is believed, so
+    nothing is missed for want of a lookup."""
 
-    def __init__(self, misses: LearnedPaths, hits: LearnedPaths, min_misses: int) -> None:
+    def __init__(self, misses: LearnedPaths, hits: LearnedPaths, bound: Bound, way: SameWay, min_misses: int) -> None:
         self._misses = misses
         self._hits = hits
+        self._bound = bound
+        self._way = way
         self._min_misses = min_misses
 
     def excludes(self, plane: Aircraft, distance_km: float, seconds_to_closest: float) -> bool:
-        return len(self._misses.on(plane)) >= self._min_misses and not self._hits.on(plane)
+        misses = self._misses.on(plane)
+        if len(misses) < self._min_misses:
+            return False
+        bound_deg = self._bound.of(plane)
+        if bound_deg is None:
+            return False
+        if sum(self._way.alike(m.bound_deg, bound_deg) for m in misses) < self._min_misses:
+            return False
+        return not any(self._way.alike(h.bound_deg, bound_deg) for h in self._hits.on(plane))
 
 
 class PathFinder:
-    """Planes outside the zone on the path at least min_paths earlier planes flew overhead,
-    for held_polls looks in a row. From then on one is followed while it is still on
-    any of them, and given the time those planes took from there to their closest point."""
+    """Planes outside the zone on the path at least min_paths earlier planes bound the same
+    way flew overhead, for held_polls looks in a row. From then on one is followed while it
+    is still on any of them, and given the time those planes took from there to their
+    closest point. Which way a plane is bound is only looked up once it is on enough paths."""
 
-    def __init__(self, paths: LearnedPaths, centre: Location, radius_km: float, min_paths: int, held_polls: int) -> None:
+    def __init__(
+        self, paths: LearnedPaths, bound: Bound, way: SameWay, centre: Location, radius_km: float, min_paths: int, held_polls: int
+    ) -> None:
         self._paths = paths
+        self._bound = bound
+        self._way = way
         self._centre = centre
         self._radius_km = radius_km
         self._min_paths = min_paths
@@ -312,17 +353,20 @@ class PathFinder:
             distance_km = self._centre.distance_km(plane.location)
             if distance_km <= self._radius_km:
                 continue
+            following = plane.hex in self._following
+            needed = 1 if following else self._min_paths
             on = self._paths.on(plane)
-            if plane.hex in self._following:
-                if not on:
-                    continue
-            else:
-                if len(on) < self._min_paths:
-                    continue
+            if len(on) < needed:
+                continue
+            bound_deg = self._bound.of(plane)
+            on = [p for p in on if self._way.alike(p.bound_deg, bound_deg)]
+            if len(on) < needed:
+                continue
+            if not following:
                 held[plane.hex] = self._held.get(plane.hex, 0) + 1
                 if held[plane.hex] < self._held_polls:
                     continue
-            found.append(Sighting(plane, distance_km, statistics.median(on.values()), approaching=True))
+            found.append(Sighting(plane, distance_km, statistics.median(p.seconds_to_closest for p in on), approaching=True))
         self._held = held
         self._following = {s.aircraft.hex for s in found}
         return found
