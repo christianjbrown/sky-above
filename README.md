@@ -22,6 +22,9 @@ your TV or smart display shows who it is and where it's headed, and reads it out
 - 🧳 Flights you care about, yours or friends' and family's, followed from four hours before take-off until landing
 - 🚁 Air ambulance and police helicopters in their own colours, where your country gives them their own callsigns
 - 🪖 Military aircraft in olive, named by who flies them ("Royal Air Force, Airbus A400M Atlas")
+- 🚨 Planes in an emergency, anywhere your antenna can hear them: squawking 7700, 7600 or 7500, or
+  diving or climbing far faster than any normal flight. They go red, take the screen until it's
+  over, and get read out a bit louder
 - 🗺️ A live map of every plane nearby
 - 🏠 Your location never leaves the house
 
@@ -210,10 +213,15 @@ Each followed flight costs roughly 50 cents to $2 in AeroAPI lookups.
 - 🤫 **Quiet hours.** Nothing on the screen from midnight to 8am, except helicopters and military
   aircraft, which are rare enough to be worth waking up for. Don't want those either? Set
   `QUIET_HOURS_EXCEPT=` (empty) in `.env`.
+- 🚨 **Emergencies win.** A plane in an emergency beats everything, quiet hours included, and stays
+  up until it has been over for a minute. Air ambulances, police and military aircraft that come
+  into the zone keep the card until they're 5 km away, so a plane passing through waits its turn.
+  On a Nest Hub the emergency announcement turns the volume up to 8 out of 10 (never down) and puts
+  it back afterwards.
 - 🎵 **Polite.** It only casts when the screen is idle, so it won't interrupt music, a film or a
   timer.
 - 🧪 **Try it without a plane.** Open `http://skyabove.local:8090/?demo` for a made-up one. Also
-  `?demo=followed`, `?demo=taxiing`, `?demo=flying`, `?demo=landed`, `?demo=ambulance`, `?demo=police` and `?demo=military`.
+  `?demo=followed`, `?demo=taxiing`, `?demo=flying`, `?demo=landed`, `?demo=ambulance`, `?demo=police`, `?demo=military` and `?demo=emergency`.
 - 🏠 **Privacy.** Your location stays in `.env` on the Pi. The Pi does ask FlightAware about planes
   passing near you, which hints at roughly where you are. Leave `AEROAPI_KEY` empty and set
   `ROUTE_API_URL=` to stop that.

@@ -18,6 +18,16 @@ from flights_watcher.chromecast import ListedChromecasts, PyChromecastDevice, pl
 from flights_watcher.clock import Clock
 from flights_watcher.config import Settings
 from flights_watcher.display import CastDevice, CastDisplay, CoolingOffDevice, Display, FanOutDisplay, LoggingDisplay, Stamped
+from flights_watcher.emergency import (
+    DeclaredEmergency,
+    EmergencyAlert,
+    EmergencyLog,
+    EmergencyMessages,
+    FirstEmergencies,
+    HeldEmergencies,
+    SteepClimbOrDescent,
+)
+from flights_watcher.emergency_speech import EmergencyAnnouncer, EmergencyWording
 from flights_watcher.estimate import (
     DepartureEstimator,
     EstimatedFollowedFlights,
@@ -89,6 +99,7 @@ from flights_watcher.paths import (
     PathRecorder,
 )
 from flights_watcher.presence import Linger, MinimumShowing
+from flights_watcher.priority import ServicesStay
 from flights_watcher.rare import RareKinds
 from flights_watcher.schedule import QuietHours
 from flights_watcher.schedules import AeroApiSchedules
@@ -97,6 +108,7 @@ from flights_watcher.speech import (
     AnnouncementWording,
     Announcer,
     EndOfShowing,
+    InterruptedByEmergency,
     QuietVoice,
     Silence,
     SpeechClips,
@@ -251,6 +263,19 @@ BLOCK_TIMES_KEEP_SECONDS = 6 * 60 * 60
 FOLLOWED_BUDGET_FILE = "followed-aeroapi.json"
 # A plane in the zone this close to its nearest point to home is announced without a time.
 OVERHEAD_SOON_SECONDS = 10
+# A plane in an emergency counts once its squawk or emergency status has held for this
+# many looks, or its climb or descent, steeper than any departure or arrival, for this
+# many; it is over once this long has passed without a look that showed it.
+EMERGENCY_HELD_POLLS = 3
+STEEP_HELD_POLLS = 10
+EMERGENCY_CLEAR_SECONDS = 60
+STEEP_DESCENT_FPM = 6000
+STEEP_CLIMB_FPM = 8000
+EMERGENCIES_ANNOUNCED_REMEMBERED = 20
+# An air ambulance, police or military aircraft that comes into the zone keeps the card until it is
+# further than this from home.
+SERVICES_KEPT = ("ambulance", "police", "military")
+SERVICE_HOLD_KM = 5
 # Where nginx serves the clip folder, relative to the receiver page.
 SPEECH_URL_PREFIX = "speech/"
 
@@ -267,6 +292,7 @@ class Lookups:
 class Voices:
     planes: QuietVoice | Silence
     followed: QuietVoice | Silence
+    emergency: EmergencyAnnouncer | Silence
 
 
 @dataclass(frozen=True)
@@ -284,7 +310,7 @@ def build(settings: Settings, clock: Clock, logger: logging.Logger) -> App:
     rare = RareKinds(settings.quiet_hours_except)
     voice = voices(settings, clock, rare, logger)
     display, live_server = display_for(settings, clock, logger)
-    display = FanOutDisplay([display, EndOfShowing(voice.planes)])
+    display = FanOutDisplay([display, EndOfShowing(voice.planes), InterruptedByEmergency(voice.planes)])
     watcher = watcher_for(
         settings, http, found, voice, display, followed_standby(settings, found, voice, clock, logger), rare, clock, logger
     )
@@ -336,14 +362,15 @@ def lookups(settings: Settings, http: JsonHttp, clock: Clock, logger: logging.Lo
 def voices(settings: Settings, clock: Clock, rare: RareKinds, logger: logging.Logger) -> Voices:
     """Spoken announcements when there is a speech server, silence otherwise."""
     if settings.speech_server is None:
-        return Voices(Silence(), Silence())
+        return Voices(Silence(), Silence(), Silence())
     host, port = settings.speech_server
     launch_start = CAST_LAUNCH_SECONDS + (CHIME_SECONDS + UNMUTE_SETTLE_SECONDS if settings.mute_chime else 0)
     clips = SpeechClips(
         pathlib.Path(settings.speech_dir), SPEECH_URL_PREFIX, SPEECH_CLIPS_KEPT, WyomingSpeech(host, port, SPEECH_TIMEOUT_SECONDS)
     )
+    wording = AnnouncementWording(NAMED_AIRPORTS, SpokenWhereabouts(settings.home))
     announcer = Announcer(
-        AnnouncementWording(NAMED_AIRPORTS, SpokenWhereabouts(settings.home)),
+        wording,
         SpokenArrival(settings.home, OVERHEAD_NOW_KM),
         SpeechTiming(SPOKEN_CHARS_PER_SECOND, CLIP_MAKING_RATIO, launch_start, SHOWING_START_SECONDS),
         clips,
@@ -354,6 +381,8 @@ def voices(settings: Settings, clock: Clock, rare: RareKinds, logger: logging.Lo
     return Voices(
         QuietVoice(announcer, quiet_hours, clock, rare),
         QuietVoice(FollowedAnnouncer(clips, FOLLOWED_NEWS_KEPT_SECONDS, clock, logger), quiet_hours, clock, rare),
+        # Heard at any hour.
+        EmergencyAnnouncer(EmergencyWording(wording, SpokenWhereabouts(settings.home)), clips, EMERGENCIES_ANNOUNCED_REMEMBERED, logger),
     )
 
 
@@ -483,19 +512,42 @@ def watcher_for(
             PathFinder(paths, bound, BOUND_WITHIN, settings.home, zone.radius_km, PATH_MIN_PLANES, PATH_HELD_POLLS),
         ]
     )
-    return Watcher(
-        source=Tar1090AircraftSource(settings.aircraft_url, http),
-        zone=OverheadAndApproaching(zone, Observing(recorder, approaching), closest, OVERHEAD_SOON_SECONDS),
-        messages=PlanesMessageBuilder(
-            CardBuilder(found.routes, found.photos, AircraftNames(), services, logger),
-            voice.planes,
+    cards = CardBuilder(found.routes, found.photos, AircraftNames(), services, logger)
+
+    def planes_message(speech: QuietVoice | Silence) -> PlanesMessageBuilder:
+        return PlanesMessageBuilder(
+            cards,
+            speech,
             settings.home,
             zone.radius_km,
             settings.max_cards,
             Zone(settings.home, SURROUNDINGS_KM),
             MAX_OTHER_PLANES,
             services,
+        )
+
+    emergencies = FirstEmergencies(
+        [
+            HeldEmergencies(DeclaredEmergency(), settings.home, EMERGENCY_HELD_POLLS, EMERGENCY_CLEAR_SECONDS, clock),
+            HeldEmergencies(
+                SteepClimbOrDescent(STEEP_DESCENT_FPM, STEEP_CLIMB_FPM),
+                settings.home,
+                STEEP_HELD_POLLS,
+                EMERGENCY_CLEAR_SECONDS,
+                clock,
+            ),
+        ]
+    )
+    return Watcher(
+        source=Tar1090AircraftSource(settings.aircraft_url, http),
+        zone=ServicesStay(
+            OverheadAndApproaching(zone, Observing(recorder, approaching), closest, OVERHEAD_SOON_SECONDS),
+            services,
+            SERVICES_KEPT,
+            settings.home,
+            SERVICE_HOLD_KM,
         ),
+        messages=planes_message(voice.planes),
         display=display,
         quiet_hours=QuietHours.parse(settings.quiet_hours),
         linger=MinimumShowing(Linger(settings.linger_seconds, clock), settings.card_min_seconds, clock),
@@ -505,4 +557,5 @@ def watcher_for(
         due_seconds=APPROACH_DUE_SECONDS,
         surroundings=Zone(settings.home, SURROUNDINGS_KM),
         rare=rare,
+        emergencies=EmergencyAlert(emergencies, EmergencyMessages(planes_message(Silence()), voice.emergency), EmergencyLog(logger)),
     )

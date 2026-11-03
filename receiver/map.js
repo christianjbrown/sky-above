@@ -4,6 +4,8 @@
 // rarely points straight at until it is lined up to land. Other planes around
 // are smaller and dimmer, with no lines.
 // Each plane's shape and size follow its type: airliner, heavy, prop or helicopter.
+// A plane in an emergency can be far beyond the street map, which only covers the area
+// round home, so for one of those the small world map is drawn underneath it as well.
 // Everything it draws comes
 // from the Pi: the map extract of the area round home, MapLibre, the Protomaps style, fonts
 // and icons all live under vendor/ and map/.
@@ -12,6 +14,7 @@
   "use strict";
 
   var MAP_URL = "map/area.pmtiles";
+  var WORLD_URL = "map/world.pmtiles";
   var MAX_ZOOM = 14;
   // However close the plane gets, the map still shows this much around home, as a
   // share of the zone's radius, so the zone and the plane passing through it stay in view.
@@ -121,6 +124,8 @@
     this._pending = null;
     this._others = {};
     this._airportMarker = null;
+    this._baseLayers = [];
+    this._world = false;
   }
 
   FlightMap.prototype.show = function (message) {
@@ -138,6 +143,7 @@
       var protocol = new pmtiles.Protocol();
       maplibregl.addProtocol("pmtiles", protocol.tile);
       var home = [message.home.lon, message.home.lat];
+      this._baseLayers = basemaps.layers("protomaps", basemaps.namedFlavor("dark"), { lang: "en" });
       this._map = new maplibregl.Map({
         container: this._container,
         center: home,
@@ -158,7 +164,7 @@
               attribution: "© OpenStreetMap contributors, Protomaps"
             }
           },
-          layers: basemaps.layers("protomaps", basemaps.namedFlavor("dark"), { lang: "en" })
+          layers: this._baseLayers
         }
       });
       this._homeMarker = new maplibregl.Marker({ element: homeElement() }).setLngLat(home).addTo(this._map);
@@ -200,6 +206,7 @@
     var position = [plane.lon, plane.lat];
     var home = [message.home.lon, message.home.lat];
     var fresh = plane.hex !== this._hex;
+    if (plane.emergency) { this._addWorld(); }
     if (fresh) {
       this._hex = plane.hex;
       this._trail = [];
@@ -221,6 +228,19 @@
       camera.easing = function (t) { return t; };
       this._map.easeTo(camera);
     }
+  };
+
+  // The world map's layers, slipped in under the street map's, once.
+  FlightMap.prototype._addWorld = function () {
+    if (this._world) { return; }
+    this._world = true;
+    var map = this._map;
+    map.addSource("world", { type: "vector", url: "pmtiles://" + absolute(WORLD_URL) });
+    var layers = this._baseLayers.filter(function (layer) { return layer.type !== "background"; });
+    var under = layers[0].id;
+    layers.forEach(function (layer) {
+      map.addLayer(Object.assign({}, layer, { id: "world-" + layer.id, source: "world" }), under);
+    });
   };
 
   // The line from the plane to where it is landing, and the airport's code at its end.

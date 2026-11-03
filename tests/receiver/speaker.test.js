@@ -47,6 +47,64 @@ describe("Speaker", () => {
   });
 });
 
+describe("an emergency read out louder", () => {
+  let context;
+  let audio;
+
+  beforeEach(() => {
+    context = installCastFake();
+    vi.stubGlobal("Audio", class {
+      constructor() { audio = this; }
+      play() { played.push(this.src); }
+    });
+  });
+
+  it("turns the Hub up for the clip and back down once it has finished", () => {
+    const speaker = new window.Speaker(new window.RightAway(), new window.HubVolume(context));
+    speaker.say("clips/emergency.mp3", 0.8);
+    expect(context.levels).toEqual([0.8]);
+    audio.onended();
+    expect(context.levels).toEqual([0.8, 0.5]);
+    audio.onended();
+    expect(context.levels).toEqual([0.8, 0.5]);
+  });
+
+  it("turns it back down when the clip fails, or is cut short by the next", () => {
+    const speaker = new window.Speaker(new window.RightAway(), new window.HubVolume(context));
+    speaker.say("clips/one.mp3", 0.8);
+    audio.onerror();
+    speaker.say("clips/two.mp3", 0.8);
+    speaker.say("clips/three.mp3");
+    expect(context.levels).toEqual([0.8, 0.5, 0.8, 0.5]);
+  });
+
+  it("leaves a Hub that is already loud enough, or says nothing of its level, alone", () => {
+    const speaker = new window.Speaker(new window.RightAway(), new window.HubVolume(context));
+    context.volume = { muted: false, level: 0.9 };
+    speaker.say("clips/one.mp3", 0.8);
+    context.volume = { muted: false };
+    speaker.say("clips/two.mp3", 0.8);
+    context.volume = null;
+    speaker.say("clips/three.mp3", 0.8);
+    expect(context.levels).toEqual([]);
+    expect(played).toEqual(["clips/one.mp3", "clips/two.mp3", "clips/three.mp3"]);
+  });
+
+  it("plays at the volume there is in a browser, which it cannot turn up", () => {
+    const speaker = new window.Speaker(new window.RightAway());
+    speaker.say("clips/emergency.mp3", 0.8);
+    expect(played).toEqual(["clips/emergency.mp3"]);
+  });
+
+  it("turns the Hub back down when the clip is refused", async () => {
+    vi.stubGlobal("Audio", class { play() { return Promise.reject(new Error("NotAllowedError")); } });
+    const speaker = new window.Speaker(new window.RightAway(), new window.HubVolume(context));
+    speaker.say("clips/one.mp3", 0.8);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(context.levels).toEqual([0.8, 0.5]);
+  });
+});
+
 describe("WhenHubUnmuted", () => {
   const SETTLE = 2000;
   const LAUNCH = 20000;

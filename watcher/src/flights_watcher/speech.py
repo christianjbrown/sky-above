@@ -383,3 +383,21 @@ class EndOfShowing:
 
     def clear(self) -> None:
         self._voice.ended()
+
+
+class InterruptedByEmergency:
+    """Sits beside the real displays and tells the voice when an emergency takes the card,
+    so the plane it was announcing does not get its clip played again once the emergency
+    is over. Draws nothing itself."""
+
+    def __init__(self, voice: Voice) -> None:
+        self._voice = voice
+
+    def show(self, message: dict[str, Any]) -> bool:
+        cards = message.get("planes") or [{}]
+        if cards[0].get("emergency"):
+            self._voice.ended()
+        return False
+
+    def clear(self) -> None:
+        pass

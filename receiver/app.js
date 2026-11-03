@@ -3,7 +3,8 @@
 // nearest one; in between, it may send a "followed" message for a flight being
 // followed, which followed.js draws. Opened in an ordinary browser it follows the
 // same card from the Pi instead, ?demo shows a made-up plane and ?demo=followed a
-// made-up followed flight.
+// made-up followed flight. A plane in an emergency comes as a "planes" message whose
+// card says what is wrong, and is drawn in red.
 
 (function () {
   "use strict";
@@ -22,6 +23,9 @@
   // How long the card has to stay hidden before the watcher is told, so a card
   // being closed does not report itself on the way out.
   var HIDDEN_FOR_MS = 3000;
+  // How loud an emergency is read out on the Hub, out of 1, unless it is already louder.
+  var EMERGENCY_VOLUME = 0.8;
+  var LOOKS = ["waiting", "followed", "emergency", "service-ambulance", "service-police", "service-military"];
 
   var parts = window.CardParts;
   var screen = document.getElementById("screen");
@@ -54,10 +58,15 @@
     return kilometres(plane.distanceKm, "");
   }
 
+  // "Squawk 7700 · General emergency", or just the label for one only guessed at.
+  function emergencyLine(emergency) {
+    return emergency.squawk ? "Squawk " + emergency.squawk + " \u00b7 " + emergency.label : emergency.label;
+  }
+
   function render(message) {
     if (message) { parts.setHomeCountry(message.homeCountry); }
     if (message && message.type === "followed" && message.flight) {
-      screen.classList.remove("waiting", "service-ambulance", "service-police", "service-military");
+      screen.classList.remove.apply(screen.classList, LOOKS);
       screen.classList.add("followed");
       followedCard.show(message);
       speaker.say(message.speech);
@@ -66,8 +75,12 @@
     if (!message || message.type !== "planes" || !message.planes || !message.planes.length) { return; }
     var plane = message.planes[0];
 
-    screen.classList.remove("waiting", "followed", "service-ambulance", "service-police", "service-military");
-    if (plane.service) { screen.classList.add("service-" + plane.service); }
+    screen.classList.remove.apply(screen.classList, LOOKS);
+    if (plane.emergency) {
+      screen.classList.add("emergency");
+    } else if (plane.service) {
+      screen.classList.add("service-" + plane.service);
+    }
     followedCard.hide();
 
     parts.showLogo(plane.airlineCode, plane.helicopter);
@@ -75,7 +88,7 @@
     parts.setText("flight", plane.flightNumber || plane.callsign || plane.registration || plane.hex.toUpperCase());
     parts.showRoute(plane.origin, plane.destination);
     parts.setText("aircraft", plane.aircraft || plane.typeCode || "");
-    parts.setText("note", "");
+    parts.setText("note", plane.emergency ? emergencyLine(plane.emergency) : "");
 
     parts.showStats([
       { label: "Altitude", value: altitude(plane) },
@@ -84,7 +97,7 @@
     ]);
 
     parts.fitAll(SMALLEST_FIT);
-    speaker.say(message.speech);
+    speaker.say(message.speech, plane.emergency ? EMERGENCY_VOLUME : null);
     // The map goes last, so a map that fails cannot stop the card or the voice.
     try { flightMap.show(message); } catch (error) { console.warn("map:", error); }
   }
@@ -99,7 +112,7 @@
     options.customNamespaces = {};
     options.customNamespaces[NAMESPACE] = cast.framework.system.MessageType.JSON;
     context.addCustomMessageListener(NAMESPACE, function (event) { render(event.data); });
-    speaker = new Speaker(new WhenHubUnmuted(context, UNMUTE_SETTLE_MS, CHIME_MUTE_MS));
+    speaker = new Speaker(new WhenHubUnmuted(context, UNMUTE_SETTLE_MS, CHIME_MUTE_MS), new HubVolume(context));
     context.start(options);
     reportWhenHidden(context);
   }
@@ -129,7 +142,8 @@
 
   function onCastDevice() { return /CrKey/.test(navigator.userAgent); }
 
-  // ?demo=ambulance, ?demo=police and ?demo=military swap the plane for one of theirs.
+  // ?demo=ambulance, ?demo=police and ?demo=military swap the plane for one of theirs,
+  // and ?demo=emergency has it squawking 7700.
   var HELICOPTER = {
     helicopter: true,
     category: "A7",
@@ -187,7 +201,9 @@
       ]
     };
     var service = SERVICE_DEMOS[which];
-    if (service) {
+    if (which === "emergency") {
+      sample.planes[0].emergency = { kind: "general", squawk: "7700", label: "General emergency" };
+    } else if (service) {
       Object.assign(sample.planes[0], service, { service: which, flightNumber: null, origin: null, destination: null });
     }
     sample.others[2].service = which === "police" ? "ambulance" : "police";

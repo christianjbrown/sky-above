@@ -36,6 +36,26 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("a plane in an emergency", () => {
+  const emergency = { kind: "general", squawk: "7700", label: "General emergency" };
+
+  it("draws the world map under the street map, once, for a plane that may be far beyond it", () => {
+    const { flightMap, map } = readyMap(planeMessage({ emergency, lat: 52.2 }));
+    expect(map.sources.world).toBeDefined();
+    expect(map.layers.filter((layer) => layer.source === "world")).toEqual([
+      { id: "world-earth", type: "fill", source: "world", "source-layer": "earth", before: "earth" }
+    ]);
+    flightMap.show(planeMessage({ emergency, lat: 52.1 }));
+    expect(map.layers.filter((layer) => layer.source === "world")).toHaveLength(1);
+    expect(map.lastBounds.points).toContainEqual([0.03, 52.1]);
+  });
+
+  it("leaves the world map out for an ordinary plane", () => {
+    const { map } = readyMap();
+    expect(map.sources.world).toBeUndefined();
+  });
+});
+
 describe("starting the map", () => {
   it("waits for the style to load, then draws the plane that arrived meanwhile", () => {
     const flightMap = new window.FlightMap(container);

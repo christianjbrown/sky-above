@@ -60,7 +60,7 @@ export function installMapFakes() {
     addSource(id, spec) {
       this.sources[id] = { data: spec.data, setData(data) { this.data = data; } };
     }
-    addLayer(layer) { this.layers.push(layer); }
+    addLayer(layer, before) { this.layers.push(before === undefined ? layer : { ...layer, before }); }
     getSource(id) { return this.sources[id]; }
     cameraForBounds(bounds, options) {
       this.lastBounds = bounds;
@@ -83,7 +83,11 @@ export function installMapFakes() {
   });
   vi.stubGlobal("pmtiles", { Protocol: class { constructor() { this.tile = function tile() {}; } } });
   vi.stubGlobal("basemaps", {
-    layers: (source, flavor, options) => [{ source, flavor, options }],
+    // A background and one layer drawn from the tiles, as the real style has.
+    layers: (source, flavor, options) => [
+      { id: "background", type: "background", flavor, options },
+      { id: "earth", type: "fill", source, "source-layer": "earth" }
+    ],
     namedFlavor: (name) => name
   });
   return { maps, markers, protocols };
@@ -94,13 +98,15 @@ export function installCastFake() {
   const handlers = {};
   const context = {
     handlers,
-    volume: { muted: false },
+    volume: { muted: false, level: 0.5 },
+    levels: [],
     started: null,
     sent: [],
     listeners: {},
     addCustomMessageListener(namespace, handler) { handlers[namespace] = handler; },
     addEventListener(type, handler) { this.listeners[type] = handler; },
     getSystemVolume() { return this.volume; },
+    setSystemVolumeLevel(level) { this.levels.push(level); },
     start(options) { this.started = options; },
     sendCustomMessage(namespace, sender, message) { this.sent.push({ namespace, sender, message }); }
   };

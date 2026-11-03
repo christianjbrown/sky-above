@@ -135,6 +135,27 @@ describe("on the Hub", () => {
     expect(screenClasses()).toEqual([]);
   });
 
+  it("draws a plane in an emergency in red with its squawk, and reads it out louder", () => {
+    const emergency = { kind: "general", squawk: "7700", label: "General emergency" };
+    deliver(planesMessage({ emergency, service: "ambulance" }, { speech: "clips/mayday.mp3" }));
+    expect(screenClasses()).toEqual(["emergency"]);
+    expect(text("note")).toBe("Squawk 7700 \u00b7 General emergency");
+    vi.advanceTimersByTime(0);
+    expect(played).toEqual(["clips/mayday.mp3"]);
+    expect(context.levels).toEqual([0.8]);
+    deliver(planesMessage({ emergency: { kind: "descent", squawk: null, label: "Rapid descent" } }));
+    expect(text("note")).toBe("Rapid descent");
+    deliver(planesMessage());
+    expect(screenClasses()).toEqual([]);
+    expect(text("note")).toBe("");
+  });
+
+  it("reads an ordinary plane out at the Hub's own volume", () => {
+    deliver(planesMessage({}, { speech: "clips/one.mp3" }));
+    vi.advanceTimersByTime(0);
+    expect(context.levels).toEqual([]);
+  });
+
   it("takes the waiting message away when the first plane arrives", () => {
     expect(screenClasses()).toEqual(["waiting"]);
     deliver(planesMessage());
@@ -312,6 +333,13 @@ describe("the demo plane", () => {
     fakes.maps[0].finishLoading();
     const helicopter = fakes.markers.find((marker) => marker.element.className === "map-plane other" && marker.element.dataset.category === "A7");
     expect(helicopter.element.dataset.service).toBe(otherHelicopter);
+  });
+
+  it("shows the emergency demo squawking 7700", async () => {
+    await open({ query: "?demo=emergency" });
+    expect(screenClasses()).toEqual(["emergency"]);
+    expect(text("note")).toBe("Squawk 7700 \u00b7 General emergency");
+    expect(text("flight")).toBe("BA86S");
   });
 
   it("treats an unknown demo name as the plain demo plane", async () => {
