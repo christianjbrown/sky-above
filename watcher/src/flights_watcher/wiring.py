@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from zoneinfo import ZoneInfo
 
+from flights_watcher.announced import RememberedFlights
 from flights_watcher.approach import ApproachFinder, ClosestApproach, LandsFirst, OverheadAndApproaching, SteeredIn
 from flights_watcher.bound import DestinationBound, SameWay
 from flights_watcher.budget import BudgetedHttp, MonthlyBudget
@@ -184,7 +185,9 @@ SPEECH_CLIPS_KEPT = 50
 # it has been read out.
 OVERHEAD_NOW_KM = 0.5
 # Flights already announced, so one that drops back to second or leaves and returns stays quiet.
-PLANES_ANNOUNCED_REMEMBERED = 50
+# Longer than any flight is in sight, so a plane is introduced once whatever happens.
+ANNOUNCED_KEPT_FOR = timedelta(hours=6)
+ANNOUNCED_FILE = "announced.json"
 # Other planes are drawn on the map out to this far, which reaches past its edges
 # however far away the plane on the card is. Only the nearest few dozen.
 SURROUNDINGS_KM = 50
@@ -374,7 +377,7 @@ def voices(settings: Settings, clock: Clock, rare: RareKinds, logger: logging.Lo
         SpokenArrival(settings.home, OVERHEAD_NOW_KM),
         SpeechTiming(SPOKEN_CHARS_PER_SECOND, CLIP_MAKING_RATIO, launch_start, SHOWING_START_SECONDS),
         clips,
-        PLANES_ANNOUNCED_REMEMBERED,
+        RememberedFlights(pathlib.Path(settings.state_dir) / ANNOUNCED_FILE, ANNOUNCED_KEPT_FOR, clock, logger),
         logger,
     )
     quiet_hours = QuietHours.parse(settings.speech_quiet_hours)

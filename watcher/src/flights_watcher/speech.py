@@ -3,7 +3,6 @@
 The Pi only makes the audio file. The card on the Hub fetches it from the
 receiver page and plays it through the Hub's own speaker."""
 
-import collections
 import hashlib
 import io
 import json
@@ -16,6 +15,7 @@ from collections.abc import Collection
 from datetime import datetime, time
 from typing import Any, BinaryIO, Protocol
 
+from flights_watcher.announced import AnnouncedFlights
 from flights_watcher.geo import Location
 from flights_watcher.heard import SpeechTiming, ahead
 
@@ -271,7 +271,8 @@ class Announcer:
     one that was announced and comes back to being nearest stays quiet, so two
     planes swapping places do not talk over each other. The clip is handed out with
     every update while its plane stays nearest, until the card is taken down; a card
-    launched afresh for the same plane gets no clip to play a second time. Where the
+    launched afresh for the same plane gets no clip to play a second time, even after a
+    restart, since the flights announced are kept (see RememberedFlights). Where the
     plane is gets worked out for when those words will be heard, and whether it is
     overhead yet for when the whole announcement has been."""
 
@@ -281,7 +282,7 @@ class Announcer:
         arrival: Arrival,
         timing: SpeechTiming,
         clips: ClipMaker,
-        remembered: int,
+        announced: AnnouncedFlights,
         logger: logging.Logger,
     ) -> None:
         self._wording = wording
@@ -289,7 +290,7 @@ class Announcer:
         self._timing = timing
         self._clips = clips
         self._logger = logger
-        self._announced: collections.deque[str] = collections.deque(maxlen=remembered)
+        self._announced = announced
         self._hex: str | None = None
         self._url: str | None = None
 
@@ -299,8 +300,8 @@ class Announcer:
             self._hex = card["hex"]
             # The same airframe back hours later as another flight is worth announcing.
             flight = f"{card['hex']}/{card.get('callsign')}"
-            self._url = None if flight in self._announced else self._make(card, launching)
-            self._announced.append(flight)
+            self._url = None if self._announced.has(flight) else self._make(card, launching)
+            self._announced.add(flight)
         return self._url
 
     def ended(self) -> None:

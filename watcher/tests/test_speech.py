@@ -27,6 +27,19 @@ from flights_watcher.speech import (
 )
 
 INSTANT = SpeechTiming(13, 0, 0, 0)
+
+
+class Announced:
+    def __init__(self) -> None:
+        self.flights: set[str] = set()
+
+    def has(self, flight: str) -> bool:
+        return flight in self.flights
+
+    def add(self, flight: str) -> None:
+        self.flights.add(flight)
+
+
 LOG = logging.getLogger("test")
 
 
@@ -152,12 +165,19 @@ def test_clips_are_made_once_per_sentence_and_old_ones_pruned(tmp_path):
 
 def test_announcer_speaks_once_per_plane_and_survives_a_failure(tmp_path):
     synth = CountingSynth()
-    announcer = Announcer(AnnouncementWording(LONDON, NOWHERE), NOWHERE, INSTANT, SpeechClips(tmp_path, "speech/", 5, synth), 10, LOG)
+    announcer = Announcer(
+        AnnouncementWording(LONDON, NOWHERE), NOWHERE, INSTANT, SpeechClips(tmp_path, "speech/", 5, synth), Announced(), LOG
+    )
     url = announcer.speech_for(CARD)
     assert url and announcer.speech_for(CARD) == url
     assert len(synth.texts) == 1
     broken = Announcer(
-        AnnouncementWording(LONDON, NOWHERE), NOWHERE, INSTANT, SpeechClips(tmp_path / "x", "speech/", 5, CountingSynth(fail=True)), 10, LOG
+        AnnouncementWording(LONDON, NOWHERE),
+        NOWHERE,
+        INSTANT,
+        SpeechClips(tmp_path / "x", "speech/", 5, CountingSynth(fail=True)),
+        Announced(),
+        LOG,
     )
     assert broken.speech_for(CARD) is None
     assert Silence().speech_for(CARD) is None
@@ -165,7 +185,7 @@ def test_announcer_speaks_once_per_plane_and_survives_a_failure(tmp_path):
 
 def test_a_closer_plane_is_announced_but_one_coming_back_is_not(tmp_path):
     announcer = Announcer(
-        AnnouncementWording(LONDON, NOWHERE), NOWHERE, INSTANT, SpeechClips(tmp_path, "speech/", 5, CountingSynth()), 10, LOG
+        AnnouncementWording(LONDON, NOWHERE), NOWHERE, INSTANT, SpeechClips(tmp_path, "speech/", 5, CountingSynth()), Announced(), LOG
     )
     first = announcer.speech_for(CARD)
     closer = announcer.speech_for({**CARD, "hex": "closer", "flightNumber": "U28041"})
@@ -175,7 +195,7 @@ def test_a_closer_plane_is_announced_but_one_coming_back_is_not(tmp_path):
 
 def test_a_plane_back_on_a_fresh_card_is_not_announced_again(tmp_path):
     announcer = Announcer(
-        AnnouncementWording(LONDON, NOWHERE), NOWHERE, INSTANT, SpeechClips(tmp_path, "speech/", 5, CountingSynth()), 10, LOG
+        AnnouncementWording(LONDON, NOWHERE), NOWHERE, INSTANT, SpeechClips(tmp_path, "speech/", 5, CountingSynth()), Announced(), LOG
     )
     assert announcer.speech_for(CARD)
     EndOfShowing(QuietVoice(announcer, QuietHours.parse(""), FakeClock(), RareKinds(()))).clear()
@@ -185,7 +205,7 @@ def test_a_plane_back_on_a_fresh_card_is_not_announced_again(tmp_path):
 
 def test_the_same_airframe_as_another_flight_is_announced_again(tmp_path):
     announcer = Announcer(
-        AnnouncementWording(LONDON, NOWHERE), NOWHERE, INSTANT, SpeechClips(tmp_path, "speech/", 5, CountingSynth()), 10, LOG
+        AnnouncementWording(LONDON, NOWHERE), NOWHERE, INSTANT, SpeechClips(tmp_path, "speech/", 5, CountingSynth()), Announced(), LOG
     )
     announcer.speech_for(CARD)
     announcer.ended()
@@ -259,7 +279,7 @@ def test_the_announcement_says_where_the_plane_will_be_when_the_words_are_heard(
     timing = SpeechTiming(chars_per_second=10, making_ratio=0, launch_start_seconds=10, showing_start_seconds=1)
     arrival = SpokenArrival(HOME, 0.5)
     announcer = Announcer(
-        AnnouncementWording(LONDON, SpokenWhereabouts(HOME)), arrival, timing, SpeechClips(tmp_path, "speech/", 5, synth), 10, LOG
+        AnnouncementWording(LONDON, SpokenWhereabouts(HOME)), arrival, timing, SpeechClips(tmp_path, "speech/", 5, synth), Announced(), LOG
     )
     announcer.speech_for(card)
     # The lead-in "F R, 2 0 S W, from Alicante, to London Stansted" is 46 characters, 4.6 seconds,
@@ -314,7 +334,9 @@ def test_wyoming_client_reports_audio_that_never_started():
 
 def test_a_flight_with_nothing_to_say_is_not_announced(tmp_path):
     synth = CountingSynth()
-    announcer = Announcer(AnnouncementWording(LONDON, NOWHERE), NOWHERE, INSTANT, SpeechClips(tmp_path, "speech/", 5, synth), 10, LOG)
+    announcer = Announcer(
+        AnnouncementWording(LONDON, NOWHERE), NOWHERE, INSTANT, SpeechClips(tmp_path, "speech/", 5, synth), Announced(), LOG
+    )
     assert announcer.speech_for({**CARD, "destination": None}) is None
     assert synth.texts == []
 
