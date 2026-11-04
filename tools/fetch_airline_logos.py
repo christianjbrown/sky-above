@@ -47,12 +47,22 @@ ALIASES = {
     "EJA": "NJE",  # NetJets in the US
     "LXJ": "FJO",  # Flexjet in the US
     "SWN": "NPT",  # West Atlantic Sweden
+    "TVF": "TRA",  # Transavia France
+    "UBT": "NBT",  # Norse Atlantic UK
+    "CND": "CAI",  # Corendon Dutch Airlines
+    "ICV": "CLX",  # Cargolux Italia
+    "BOX": "DHK",  # Aerologic, flying for DHL
+    "SRR": "UPS",  # Star Air, flying for UPS
+    "QQE": "QTR",  # Qatar Executive
+    "LCO": "LAN",  # LATAM Cargo Chile
+    "CAO": "CCA",  # Air China Cargo
+    "ROU": "ACA",  # Air Canada Rouge
+    "MAC": "ABY",  # Air Arabia Maroc
 }
 # Airlines Soaring Symbols has no logo for, from Wikimedia, public domain or CC0. Each
 # file's licence was checked by hand; a non-free one never goes in.
 EXTRAS = {
-    "TOM": "https://upload.wikimedia.org/wikipedia/commons/6/6f/TUI_Logo_2016.svg",  # TUI Airways
-    "LOG": "https://upload.wikimedia.org/wikipedia/en/9/94/Loganair_logo.svg",  # Loganair
+    "ABD": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Air_Atlanta_Icelandic_Logo.svg",  # Air Atlanta Icelandic
     "AIH": "https://upload.wikimedia.org/wikipedia/commons/e/e7/AirZeta_logo_2025.svg",  # AirZeta
     "AIZ": "https://upload.wikimedia.org/wikipedia/commons/9/9b/Arkia_Israeli_logo.svg",  # Arkia
     "AJT": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Amerijet_Logo.svg",  # Amerijet International
@@ -60,29 +70,41 @@ EXTRAS = {
     "AUR": "https://upload.wikimedia.org/wikipedia/commons/a/a2/Aurigny_logo.svg",  # Aurigny
     "AWC": "https://upload.wikimedia.org/wikipedia/en/7/75/Titan_Airways_logo.svg",  # Titan Airways
     "AWG": "https://upload.wikimedia.org/wikipedia/en/3/39/Animawings_Logo.svg",  # Animawings
+    "AZG": "https://upload.wikimedia.org/wikipedia/commons/3/33/Logo_of_Silk_Way_West_Airlines.svg",  # Silk Way West Airlines
     "AZW": "https://upload.wikimedia.org/wikipedia/commons/8/8b/Air_Zimbabwe_wordmark.svg",  # Air Zimbabwe
     "BBC": "https://upload.wikimedia.org/wikipedia/en/9/9f/Biman_Airlines_classic_logo.svg",  # Biman Bangladesh Airlines
     "CAI": "https://upload.wikimedia.org/wikipedia/commons/8/88/Corendon_Airlines_Logo_2017.svg",  # Corendon Airlines
+    "CKS": "https://upload.wikimedia.org/wikipedia/commons/c/c9/Kalitta_Air_logo.svg",  # Kalitta Air
     "CLX": "https://upload.wikimedia.org/wikipedia/commons/7/76/Cargolux_logo.svg",  # Cargolux
     "CTN": "https://upload.wikimedia.org/wikipedia/commons/e/e0/Croatia_Airlines_2024_logo.svg",  # Croatia Airlines
     "CYP": "https://upload.wikimedia.org/wikipedia/commons/9/93/Cyprus_Airways_%28logo%2C_2017%29.svg",  # Cyprus Airways
     "DHK": "https://upload.wikimedia.org/wikipedia/commons/a/ac/DHL_Logo.svg",  # DHL Aviation
+    "EDW": "https://upload.wikimedia.org/wikipedia/commons/f/f3/Edelweiss_Air_wordmark.svg",  # Edelweiss Air
     "ELY": "https://upload.wikimedia.org/wikipedia/commons/d/d7/El_Al_logo.svg",  # El Al
+    "ENT": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Enter_Air_logo.svg",  # Enter Air
+    "FBU": "https://upload.wikimedia.org/wikipedia/commons/5/5c/French_Bee_Logo.svg",  # French Bee
     "FDX": "https://upload.wikimedia.org/wikipedia/commons/9/9d/FedEx_Express.svg",  # FedEx Express
     "FIA": "https://upload.wikimedia.org/wikipedia/commons/6/61/Flyone-logo-1.1.svg",  # FlyOne
     "FJO": "https://upload.wikimedia.org/wikipedia/commons/b/b3/Flexjet_Logo.svg",  # Flexjet
     "FPO": "https://upload.wikimedia.org/wikipedia/commons/a/a5/ASL_Airlines_France_logo.svg",  # ASL Airlines France
+    "FWI": "https://upload.wikimedia.org/wikipedia/commons/1/17/Air_Caraibes_2019_logo.svg",  # Air Caraïbes
     "GFA": "https://upload.wikimedia.org/wikipedia/commons/9/97/Gulf_Air_2018_wordmark.svg",  # Gulf Air
     "GMA": "https://upload.wikimedia.org/wikipedia/en/2/29/Gama_Aviation_logo.svg",  # Gama Aviation
+    "IFA": "https://upload.wikimedia.org/wikipedia/commons/2/2f/FAI_rent-a-jet_logo.svg",  # FAI rent-a-jet
     "ISR": "https://upload.wikimedia.org/wikipedia/commons/9/9c/Israir_Airlines_Logo.svg",  # Israir
+    "JTD": "https://upload.wikimedia.org/wikipedia/commons/d/d6/Jet_Time_logo_%282016%29.svg",  # Jettime
     "LBT": "https://upload.wikimedia.org/wikipedia/commons/c/c6/Nouvelair_Logo.svg",  # Nouvelair
     "LGL": "https://upload.wikimedia.org/wikipedia/commons/8/8a/Luxair_Logo.svg",  # Luxair
+    "LOG": "https://upload.wikimedia.org/wikipedia/en/9/94/Loganair_logo.svg",  # Loganair
     "LZB": "https://upload.wikimedia.org/wikipedia/commons/1/18/Bulgaria_Air_logo.svg",  # Bulgaria Air
     "MNB": "https://upload.wikimedia.org/wikipedia/commons/7/73/MNG_Airlines_logo.svg",  # MNG Airlines
+    "MPH": "https://upload.wikimedia.org/wikipedia/commons/3/33/Martinair_logo.svg",  # Martinair
     "NBT": "https://upload.wikimedia.org/wikipedia/commons/2/28/Norse.svg",  # Norse Atlantic Airways
+    "NCA": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Nippon_Cargo_Airlines_Logo.svg",  # Nippon Cargo Airlines
     "NCR": "https://upload.wikimedia.org/wikipedia/commons/d/dd/National_Airlines_logo.svg",  # National Airlines
     "NJE": "https://upload.wikimedia.org/wikipedia/commons/9/9d/NetJets_logo.svg",  # NetJets
     "NPT": "https://upload.wikimedia.org/wikipedia/commons/b/bf/West_atlantic_logo.svg",  # West Atlantic UK
+    "OAE": "https://upload.wikimedia.org/wikipedia/commons/d/d0/Omni_Air_International_Logo.svg",  # Omni Air International
     "OCN": "https://upload.wikimedia.org/wikipedia/commons/8/88/Logo_Discover_Airlines.svg",  # Discover Airlines
     "PIA": "https://upload.wikimedia.org/wikipedia/en/d/dd/Pakistan_International_Airlines_logo_%282004%29.svg",  # Pakistan International Airlines
     "QNT": "https://upload.wikimedia.org/wikipedia/en/2/26/Qanot_Sharq_logo.svg",  # Qanot Sharq
@@ -90,12 +112,17 @@ EXTRAS = {
     "SQP": "https://upload.wikimedia.org/wikipedia/commons/1/18/SkyUp_Airlines_logo.svg",  # SkyUp Airlines
     "SWU": "https://upload.wikimedia.org/wikipedia/commons/9/99/SkyAlps_Logo.svg",  # Sky Alps
     "SXE": "https://upload.wikimedia.org/wikipedia/commons/1/1e/Logo_AirSierraLeone.svg",  # Air Sierra Leone
+    "SXN": "https://upload.wikimedia.org/wikipedia/en/1/15/SaxonAir_logo.svg",  # SaxonAir
     "SXS": "https://upload.wikimedia.org/wikipedia/commons/d/d9/SunExpress_Logo.svg",  # SunExpress
     "TAM": "https://upload.wikimedia.org/wikipedia/commons/f/fe/Latam-logo_-v_%28Indigo%29.svg",  # LATAM Brasil
     "TAY": "https://upload.wikimedia.org/wikipedia/commons/e/e8/ASL_Airlines_Belgium_Logo.svg",  # ASL Airlines Belgium
     "TKJ": "https://upload.wikimedia.org/wikipedia/commons/3/38/AJet_logo.svg",  # AJet
+    "TOM": "https://upload.wikimedia.org/wikipedia/commons/6/6f/TUI_Logo_2016.svg",  # TUI Airways
+    "TOW": "https://upload.wikimedia.org/wikipedia/en/d/d6/AirTanker_Services_logo.svg",  # AirTanker
+    "TVS": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Smartwings_logo.svg",  # Smartwings
     "UPS": "https://upload.wikimedia.org/wikipedia/commons/6/6b/United_Parcel_Service_logo_2014.svg",  # UPS Airlines
     "VJT": "https://upload.wikimedia.org/wikipedia/commons/3/3a/VistaJet_logo.svg",  # VistaJet
+    "WIF": "https://upload.wikimedia.org/wikipedia/commons/c/c1/Wideroe_logo_2002.svg",  # Widerøe
 }
 OUT = pathlib.Path(__file__).resolve().parents[1] / "receiver" / "logos"
 
