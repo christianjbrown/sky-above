@@ -257,7 +257,7 @@ most likely to change:
 | Setting | What it does | What to put | Default |
 |---|---|---|---|
 | `ZONE_RADIUS_KM` | How close a plane has to be | kilometres, like `1.5` | `2` |
-| `QUIET_HOURS` | When it won't cast at all | start and end, like `00:00-08:00`, or empty for never | `00:00-08:00` |
+| `QUIET_HOURS` | When it won't cast at all | start and end, like `00:00-08:00`, optionally on certain days (`Sat 00:00-10:00`, `Mon-Fri 09:00-17:00`), several comma separated, or empty for never | `00:00-08:00` |
 | `SPEECH_QUIET_HOURS` | When it won't speak | the same as above | `00:00-08:00` |
 | `QUIET_HOURS_EXCEPT` | What still gets through both kinds of quiet hours | `helicopters`, `military`, both, or empty for nothing | `helicopters,military` |
 | `SPEECH_SERVER` | Where the voice comes from | empty for no voice at all | the Pi's own |

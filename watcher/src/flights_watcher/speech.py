@@ -12,7 +12,7 @@ import re
 import socket
 import wave
 from collections.abc import Collection
-from datetime import datetime, time
+from datetime import datetime
 from typing import Any, BinaryIO, Protocol
 
 from flights_watcher.announced import AnnouncedFlights
@@ -327,7 +327,7 @@ def _joined(said: str, arrival: str | None) -> str:
 
 
 class QuietSchedule(Protocol):
-    def is_quiet(self, now: time) -> bool: ...
+    def is_quiet(self, now: datetime) -> bool: ...
 
 
 class Clock(Protocol):
@@ -350,7 +350,7 @@ class QuietVoice:
         self._rare = rare
 
     def speech_for(self, card: dict[str, Any]) -> str | None:
-        if self._quiet_hours.is_quiet(self._clock.now().time()) and not self._rare.includes_card(card):
+        if self._quiet_hours.is_quiet(self._clock.now()) and not self._rare.includes_card(card):
             return None
         return self._inner.speech_for(card)
 
