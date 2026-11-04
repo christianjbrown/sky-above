@@ -127,6 +127,14 @@ def test_receiver_serves_the_clips_the_watcher_writes():
     assert "location /speech/" in (REPO / "nginx" / "templates" / "card.locations.template").read_text()
 
 
+def test_receiver_serves_logos_kept_only_on_the_pi_before_the_repos():
+    compose = yaml.safe_load((REPO / "docker-compose.yml").read_text())
+    assert "./own-logos:/srv/own/logos:ro" in compose["services"]["receiver"]["volumes"]
+    locations = (REPO / "nginx" / "templates" / "card.locations.template").read_text()
+    assert "root /srv/own;\n    try_files $uri @repo_logos;" in locations
+    assert "own-logos/" in (REPO / ".gitignore").read_text().splitlines()
+
+
 def test_the_watcher_keeps_its_state_on_a_volume():
     compose = yaml.safe_load((REPO / "docker-compose.yml").read_text())
     watcher = dict(entry.split("=", 1) for entry in compose["services"]["watcher"]["environment"])

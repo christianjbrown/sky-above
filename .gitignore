@@ -4,6 +4,8 @@ __pycache__/
 .pytest_cache/
 # The map extracts: cut them with pmtiles, see the README.
 map/
+# Logos that may be used at home but not shared, see the README.
+own-logos/
 # Our own and family flights, which say when the house is empty.
 followed/
 # Test tooling.
