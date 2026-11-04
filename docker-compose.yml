@@ -172,6 +172,7 @@ services:
     volumes:
       - ./receiver:/usr/share/nginx/html:ro
       - ./map:/srv/map:ro
+      - ./own-logos:/srv/own/logos:ro
       - speech:/srv/speech:ro
       - certs:/certs:ro
       - ./nginx/templates:/etc/nginx/templates:ro

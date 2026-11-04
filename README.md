@@ -394,6 +394,10 @@ Place names not in the Latin alphabet need their fonts too: see `tools/fetch_map
   `python3 tools/fetch_airports.py`.
 - Logos come from [Soaring Symbols](https://github.com/anhthang/soaring-symbols) (MIT), plus a few
   public-domain and CC0 ones from Wikimedia. Refresh with `python3 tools/fetch_airline_logos.py`.
+- Missing an airline? Drop its logo into `own-logos/` on the Pi as `<ICAO code>.svg` (say `CSZ.svg`
+  for Shenzhen Airlines) and the card picks it up on the next plane, no restart needed. 🎨 It wins
+  over the repo's own logo, and it's gitignored, so logos you can use at home but can't hand out
+  never end up on GitHub.
 - The map's scripts and fonts are fetched by `python3 tools/fetch_map_assets.py`.
 - The map runs on [MapLibre GL JS](https://maplibre.org) and [PMTiles](https://github.com/protomaps/PMTiles)
   (both BSD-3-Clause), styled with [Protomaps basemaps](https://github.com/protomaps/basemaps), in

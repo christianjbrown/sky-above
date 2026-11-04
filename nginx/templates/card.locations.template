@@ -11,6 +11,18 @@ location / {
     add_header Cache-Control no-cache always;
 }
 
+# Airline logos, from own-logos/ on the Pi first and then the ones in the repo. own-logos/
+# holds logos you may use at home but not hand out, such as fair-use ones, so it stays
+# out of git.
+location /logos/ {
+    root /srv/own;
+    try_files $uri @repo_logos;
+}
+
+location @repo_logos {
+    root /usr/share/nginx/html;
+}
+
 # The map extract of the area round home, kept outside the page folder because it is too big for git.
 location /map/ {
     alias /srv/map/;
