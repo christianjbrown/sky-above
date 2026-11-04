@@ -4,7 +4,7 @@ the screen back."""
 
 import logging
 from collections.abc import Iterable, Sequence
-from datetime import time
+from datetime import datetime
 from typing import Any, Protocol
 
 from flights_watcher.aircraft import Aircraft
@@ -23,7 +23,7 @@ class MessageBuilder(Protocol):
 
 
 class Schedule(Protocol):
-    def is_quiet(self, now: time) -> bool: ...
+    def is_quiet(self, now: datetime) -> bool: ...
 
 
 class GracePeriod(Protocol):
@@ -111,7 +111,7 @@ class Watcher:
         self._current: str | None = None
 
     def tick(self) -> None:
-        quiet = self._quiet_hours.is_quiet(self._clock.now().time())
+        quiet = self._quiet_hours.is_quiet(self._clock.now())
         heard = self._source.aircraft()
         # In quiet hours only the rare kinds, such as helicopters, get a card.
         aircraft = [plane for plane in heard if not quiet or self._rare.includes_aircraft(plane)]

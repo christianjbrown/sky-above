@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from flights_watcher.geo import Location
 from flights_watcher.rare import KINDS
+from flights_watcher.schedule import QuietHours
 
 REQUIRED_KEYS = (
     "AIRCRAFT_URL",
@@ -101,7 +102,7 @@ class Settings:
                 card_min_seconds=float(env["CARD_MIN_SECONDS"]),
                 poll_seconds=float(env["POLL_SECONDS"]),
                 max_cards=int(env["MAX_CARDS"]),
-                quiet_hours=env.get("QUIET_HOURS", ""),
+                quiet_hours=_hours("QUIET_HOURS", env.get("QUIET_HOURS", "")),
                 timezone=env["TZ"],
                 cast_device_name=env["CAST_DEVICE_NAME"],
                 cast_app_id=env.get("CAST_APP_ID", "").strip(),
@@ -110,7 +111,7 @@ class Settings:
                 photo_api_url=env.get("PHOTO_API_URL", "").strip(),
                 live_port=int(env["LIVE_PORT"]) if env.get("LIVE_PORT", "").strip() else None,
                 speech_server=_host_and_port(env.get("SPEECH_SERVER", "")),
-                speech_quiet_hours=env.get("SPEECH_QUIET_HOURS", ""),
+                speech_quiet_hours=_hours("SPEECH_QUIET_HOURS", env.get("SPEECH_QUIET_HOURS", "")),
                 speech_dir=env.get("SPEECH_DIR", "").strip(),
                 aeroapi_key=env.get("AEROAPI_KEY", "").strip(),
                 aeroapi_url=env.get("AEROAPI_URL", "").strip(),
@@ -134,6 +135,15 @@ def _switch(name: str, value: str) -> bool:
         return words[value.strip().lower()]
     except KeyError:
         raise ValueError(f"{name} should be true or false, not {value!r}") from None
+
+
+def _hours(name: str, value: str) -> str:
+    """Checked here so a mistyped schedule stops the watcher at start-up, not mid-card."""
+    try:
+        QuietHours.parse(value)
+    except ValueError as error:
+        raise ValueError(f"{name}: {error}") from None
+    return value
 
 
 def _kinds(value: str) -> tuple[str, ...]:

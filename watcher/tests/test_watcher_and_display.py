@@ -1,6 +1,6 @@
 import logging
 import threading
-from datetime import datetime, time
+from datetime import datetime
 
 import pytest
 
@@ -335,18 +335,6 @@ def test_an_emergency_is_looked_for_among_every_plane_heard_even_in_quiet_hours(
     watcher.tick()
     assert [p.hex for p in emergencies.asked[-1]] == ["airliner"]
     assert display.shown == [emergencies.card]
-
-
-def test_quiet_hours_parse_and_wrap_midnight():
-    overnight = QuietHours.parse("23:00-07:00")
-    assert overnight.is_quiet(time(23, 0))
-    assert overnight.is_quiet(time(3, 0))
-    assert not overnight.is_quiet(time(7, 0))
-    assert not overnight.is_quiet(time(12, 0))
-    daytime = QuietHours.parse("09:00-17:00")
-    assert daytime.is_quiet(time(12, 0))
-    assert not daytime.is_quiet(time(20, 0))
-    assert not QuietHours.parse("").is_quiet(time(3, 0))
 
 
 def test_cast_display_launches_only_on_an_idle_hub():

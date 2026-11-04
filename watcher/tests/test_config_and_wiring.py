@@ -65,6 +65,10 @@ def test_settings_read_every_value():
     assert Settings.from_env({**FULL_ENV, "QUIET_HOURS_EXCEPT": ""}).quiet_hours_except == ()
     with pytest.raises(ConfigError, match="QUIET_HOURS_EXCEPT"):
         Settings.from_env({**FULL_ENV, "QUIET_HOURS_EXCEPT": "gliders"})
+    with pytest.raises(ConfigError, match="SPEECH_QUIET_HOURS: 'Caturday' is not a day of the week"):
+        Settings.from_env({**FULL_ENV, "SPEECH_QUIET_HOURS": "00:00-08:00, Caturday 09:00-10:00"})
+    with pytest.raises(ConfigError, match="QUIET_HOURS: quiet hours should look like 23:00-07:00"):
+        Settings.from_env({**FULL_ENV, "QUIET_HOURS": "all night"})
     assert Settings.from_env({**FULL_ENV, "POLICE_CALLSIGNS": ""}).police_callsigns == ()
     assert Settings.from_env({**FULL_ENV, "SPEECH_SERVER": ""}).speech_server is None
     assert Settings.from_env({**FULL_ENV, "LIVE_PORT": ""}).live_port is None
