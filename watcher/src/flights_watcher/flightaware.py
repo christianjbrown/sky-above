@@ -73,7 +73,9 @@ def aeroapi_get(http: JsonHttp, url: str) -> Any:
     except HTTPError as error:
         # It holds the response, and with it the connection.
         error.close()
-        if error.code == 404:
+        # A 400 is AeroAPI turning down the ident itself, such as a registration flown as a
+        # callsign, so it is as much an answer as a 404 and asking again gets the same one.
+        if error.code in (400, 404):
             return None
         raise LookupFailed(str(error)) from error
     except (OSError, ValueError) as error:

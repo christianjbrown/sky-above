@@ -12,7 +12,7 @@ from flights_watcher.announced import RememberedFlights
 from flights_watcher.approach import ApproachFinder, ClosestApproach, LandsFirst, OverheadAndApproaching, SteeredIn
 from flights_watcher.bound import DestinationBound, SameWay
 from flights_watcher.budget import BudgetedHttp, MonthlyBudget
-from flights_watcher.caching import CachedOperatorNames, CachedPhotoLookup, CachedRouteLookup, TtlCache
+from flights_watcher.caching import CachedOperatorNames, CachedPhotoLookup, CachedRouteLookup, RetryLater, TtlCache
 from flights_watcher.cards import CardBuilder
 from flights_watcher.chime import MutedLaunchDevice
 from flights_watcher.chromecast import ListedChromecasts, PyChromecastDevice, planes_channel
@@ -125,6 +125,8 @@ from flights_watcher.zone import Zone
 USER_AGENT = "sky-above (personal Nest Hub plane display)"
 LOOKUP_TTL_SECONDS = 6 * 60 * 60
 LOOKUP_CACHE_ENTRIES = 2000
+# How long a callsign whose route lookup failed waits before it is asked about again.
+ROUTE_RETRY_SECONDS = 30
 # Airline names hardly change, and each one asked for is a paid AeroAPI lookup.
 OPERATOR_TTL_SECONDS = 30 * 24 * 60 * 60
 # A callsign with nothing in the air yet may just be a plane whose take-off has not
@@ -362,7 +364,7 @@ def lookups(settings: Settings, http: JsonHttp, clock: Clock, logger: logging.Lo
         photos = CachedPhotoLookup(
             PlanespottersPhotoLookup(settings.photo_api_url, http), TtlCache(clock, LOOKUP_TTL_SECONDS, LOOKUP_CACHE_ENTRIES)
         )
-    return Lookups(TidiedRoutes(routes, airport_tidiers), photos, operator_names, airport_tidiers)
+    return Lookups(TidiedRoutes(RetryLater(routes, clock, ROUTE_RETRY_SECONDS), airport_tidiers), photos, operator_names, airport_tidiers)
 
 
 def voices(settings: Settings, clock: Clock, rare: RareKinds, logger: logging.Logger) -> Voices:

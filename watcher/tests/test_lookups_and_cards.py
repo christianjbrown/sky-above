@@ -3,7 +3,7 @@ import logging
 import pytest
 
 from fakes import HOME, FakeClock, FakeHttp, http_error, plane
-from flights_watcher.caching import CachedPhotoLookup, CachedRouteLookup, TtlCache
+from flights_watcher.caching import CachedPhotoLookup, CachedRouteLookup, RetryLater, TtlCache
 from flights_watcher.cards import CardBuilder
 from flights_watcher.geo import Location
 from flights_watcher.lookups import (
@@ -355,3 +355,31 @@ def test_a_route_missing_an_airport_keeps_the_airport_empty():
 def test_a_photo_without_an_image_is_no_photo():
     answer = FakeHttp({PHOTO_URL: {"photos": [{"photographer": "Borut Smrdelj", "thumbnail_large": {}}]}})
     assert PlanespottersPhotoLookup("https://planespotters.test/pub", answer).photo("G-EUYM") is None
+
+
+class FlakyRoutes:
+    def __init__(self) -> None:
+        self.asked: list[str] = []
+        self.failing = True
+
+    def route(self, callsign):
+        self.asked.append(callsign)
+        if self.failing:
+            raise LookupFailed("HTTP Error 429: Too Many Requests")
+        return Route(airline="easyJet", flight_number="U2353", origin=None, destination=None)
+
+
+def test_a_failed_route_lookup_is_not_asked_again_until_it_has_waited():
+    clock, inner = FakeClock(), FlakyRoutes()
+    routes = RetryLater(inner, clock, 30)
+    with pytest.raises(LookupFailed):
+        routes.route("EZY353A")
+    assert routes.route("EZY353A") is None
+    with pytest.raises(LookupFailed):
+        routes.route("BAW86S")
+    assert inner.asked == ["EZY353A", "BAW86S"]
+    clock.seconds = 30
+    inner.failing = False
+    assert routes.route("EZY353A").flight_number == "U2353"
+    assert routes.route("EZY353A").flight_number == "U2353"
+    assert inner.asked == ["EZY353A", "BAW86S", "EZY353A", "EZY353A"]
