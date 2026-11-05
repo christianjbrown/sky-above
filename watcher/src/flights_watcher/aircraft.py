@@ -38,7 +38,7 @@ class Aircraft:
         has_position = "lat" in raw and "lon" in raw
         return cls(
             hex=str(raw["hex"]),
-            callsign=_text(raw.get("flight")),
+            callsign=_callsign(raw.get("flight")),
             registration=_text(raw.get("r")),
             type_code=_text(raw.get("t")),
             description=_text(raw.get("desc")),
@@ -54,6 +54,13 @@ class Aircraft:
             squawk=_text(raw.get("squawk")),
             emergency=None if raw.get("emergency") == "none" else _text(raw.get("emergency")),
         )
+
+
+def _callsign(value: Any) -> str | None:
+    """A callsign is letters and digits. The decoder fills one it could not read with
+    "@" (as in "@@@@@@@@"), which is the same as having none."""
+    text = _text(value)
+    return text if text and text.isascii() and text.isalnum() else None
 
 
 def _text(value: Any) -> str | None:

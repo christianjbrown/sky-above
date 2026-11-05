@@ -4,7 +4,7 @@ from collections import OrderedDict
 
 from flights_watcher.clock import Clock
 from flights_watcher.flightaware import OperatorNames
-from flights_watcher.lookups import Photo, PhotoLookup, Route, RouteLookup
+from flights_watcher.lookups import LookupFailed, Photo, PhotoLookup, Route, RouteLookup
 
 
 class TtlCache[V]:
@@ -72,3 +72,28 @@ class CachedOperatorNames:
         value = self._inner.name(icao)
         self._cache.put(icao, value)
         return value
+
+
+class RetryLater:
+    """Leaves a callsign whose lookup has just failed alone for retry_seconds, answering
+    that its route is not known meanwhile. Asking again on every poll spends the
+    service's budget on one plane and gets the rest turned away for asking too often."""
+
+    def __init__(self, inner: RouteLookup, clock: Clock, retry_seconds: float) -> None:
+        self._inner = inner
+        self._clock = clock
+        self._retry_seconds = retry_seconds
+        self._failed: dict[str, float] = {}
+
+    def route(self, callsign: str) -> Route | None:
+        now = self._clock.monotonic()
+        if now < self._failed.get(callsign, now):
+            return None
+        try:
+            route = self._inner.route(callsign)
+        except LookupFailed:
+            self._failed = {key: until for key, until in self._failed.items() if until > now}
+            self._failed[callsign] = now + self._retry_seconds
+            raise
+        self._failed.pop(callsign, None)
+        return route

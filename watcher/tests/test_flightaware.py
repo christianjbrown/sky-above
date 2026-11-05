@@ -62,6 +62,8 @@ def test_no_flight_in_the_air_or_an_unknown_callsign_is_no_route():
     landed = {"flights": [FLIGHTS["flights"][0], FLIGHTS["flights"][2]]}
     assert lookup({FLIGHTS_URL: landed})[0].route("EWG6U") is None
     assert lookup({FLIGHTS_URL: http_error(404)})[0].route("EWG6U") is None
+    # A registration flown as a callsign is no designator, and AeroAPI says so with a 400.
+    assert lookup({FLIGHTS_URL: http_error(400)})[0].route("EWG6U") is None
 
 
 def test_an_outage_or_a_refused_key_is_a_failure():
