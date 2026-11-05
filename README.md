@@ -7,8 +7,10 @@ your TV or smart display shows who it is and where it's headed, and reads it out
 
 | | |
 |---|---|
-| ![An air ambulance helicopter, in green](docs/screenshots/ambulance.jpg) | ![A Royal Air Force A400M, in olive](docs/screenshots/military.jpg) |
-| 🚁 Air ambulances and police get their own look | 🪖 So do military aircraft |
+| ![An air ambulance helicopter, in green](docs/screenshots/ambulance.jpg) | ![A police helicopter, in blue](docs/screenshots/police.jpg) |
+| 🚁 Air ambulances get their own look... | 👮 ...and so do the police |
+| ![A Royal Air Force A400M, in olive](docs/screenshots/military.jpg) | ![A British Airways flight squawking 7700 for a general emergency, in red, with its plane in red on the map](docs/screenshots/emergency.jpg) |
+| 🪖 Military aircraft go olive | 🚨 A plane in an emergency goes red and takes over the screen |
 | ![A followed flight to Berlin waiting to leave, likely delayed because its plane is coming in late](docs/screenshots/followed.jpg) | ![The same flight in the air over the North Sea, with its route on a map](docs/screenshots/flying.jpg) |
 | 🧳 A flight you're following, before it leaves... | ...and on its way |
 
