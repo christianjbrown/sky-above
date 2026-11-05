@@ -22,7 +22,7 @@ import pathlib
 import statistics
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
 from flights_watcher.aircraft import Aircraft
@@ -86,6 +86,12 @@ class PathStore(Protocol):
     def save(self, paths: Sequence[LearnedPath]) -> None: ...
 
 
+def _aware(moment: datetime) -> datetime:
+    """Early versions wrote the time without its zone, in UTC. Left naive, it cannot be
+    compared with the clock's and every new path failed to save."""
+    return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
+
+
 class JsonPathStore:
     """The learned paths in a file, so a restart or a deploy does not forget them.
     A missing or broken file is logged and treated as no paths yet."""
@@ -100,7 +106,7 @@ class JsonPathStore:
             return [
                 LearnedPath(
                     entry["hex"],
-                    datetime.fromisoformat(entry["learnedAt"]),
+                    _aware(datetime.fromisoformat(entry["learnedAt"])),
                     tuple(
                         Fix(Location(lat, lon), int(alt), float(track), float(seconds)) for lat, lon, alt, track, seconds in entry["fixes"]
                     ),
