@@ -332,6 +332,18 @@ def test_wyoming_client_reports_audio_that_never_started():
     server.close()
 
 
+def test_a_card_that_goes_up_before_its_route_is_known_is_announced_once_it_is(tmp_path):
+    synth = CountingSynth()
+    announcer = Announcer(
+        AnnouncementWording(LONDON, NOWHERE), NOWHERE, INSTANT, SpeechClips(tmp_path, "speech/", 5, synth), Announced(), LOG
+    )
+    early = {**CARD, "callsign": None, "flightNumber": None, "origin": None, "destination": None}
+    assert announcer.speech_for(early) is None
+    url = announcer.speech_for(CARD)
+    assert url and announcer.speech_for(CARD) == url
+    assert len(synth.texts) == 1
+
+
 def test_a_flight_with_nothing_to_say_is_not_announced(tmp_path):
     synth = CountingSynth()
     announcer = Announcer(

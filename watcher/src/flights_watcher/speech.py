@@ -267,9 +267,10 @@ class ClipMaker(Protocol):
 
 
 class Announcer:
-    """Announces the nearest plane each time a new one takes over, once per flight:
-    one that was announced and comes back to being nearest stays quiet, so two
-    planes swapping places do not talk over each other. The clip is handed out with
+    """Announces the nearest plane each time a new one takes over, once per flight, as
+    soon as its card says where it is flying from and to: one that was announced and
+    comes back to being nearest stays quiet, so two planes swapping places do not talk
+    over each other. The clip is handed out with
     every update while its plane stays nearest, until the card is taken down; a card
     launched afresh for the same plane gets no clip to play a second time, even after a
     restart, since the flights announced are kept (see RememberedFlights). Where the
@@ -293,24 +294,32 @@ class Announcer:
         self._announced = announced
         self._hex: str | None = None
         self._url: str | None = None
+        self._settled = False
+        self._launching = False
 
     def speech_for(self, card: dict[str, Any]) -> str | None:
         if card["hex"] != self._hex:
-            launching = self._hex is None
-            self._hex = card["hex"]
+            self._launching = self._hex is None
+            self._hex, self._url, self._settled = card["hex"], None, False
+        # A card can go up before the plane's callsign or route is known, so it is
+        # announced on the first update that has something to say, not only the first one.
+        lead_in = None if self._settled else self._wording.lead_in(card)
+        if lead_in is not None:
             # The same airframe back hours later as another flight is worth announcing.
             flight = f"{card['hex']}/{card.get('callsign')}"
-            self._url = None if self._announced.has(flight) else self._make(card, launching)
+            if not self._announced.has(flight):
+                self._url = self._make(card, lead_in, self._launching)
             self._announced.add(flight)
+            self._settled = True
+        # Only the first update goes out with the launch; any later one finds the card up.
+        self._launching = False
         return self._url
 
     def ended(self) -> None:
         self._hex, self._url = None, None
 
-    def _make(self, card: dict[str, Any], launching: bool) -> str | None:
-        said, lead_in = self._wording.text(card), self._wording.lead_in(card)
-        if not said or lead_in is None:
-            return None
+    def _make(self, card: dict[str, Any], lead_in: str, launching: bool) -> str | None:
+        said = self._wording.text(card) or lead_in
         draft = _joined(said, self._arrival.phrase(card))
         said = self._wording.text(ahead(card, self._timing.until(draft, len(lead_in), launching))) or said
         finished = ahead(card, self._timing.until(draft, len(draft), launching))
