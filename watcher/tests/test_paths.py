@@ -1,6 +1,8 @@
+import json
 import logging
 import math
-from datetime import timedelta
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -228,12 +230,19 @@ def test_only_the_most_recent_paths_are_kept_and_old_ones_are_forgotten():
 
 def test_learned_paths_survive_a_restart(tmp_path):
     store = JsonPathStore(tmp_path / "paths.json", LOGGER)
-    store.save([departure("one")])
+    learned_at = datetime(2026, 11, 1, 12, 0, tzinfo=UTC)
+    store.save([replace(departure("one"), learned_at=learned_at)])
     [path] = JsonPathStore(tmp_path / "paths.json", LOGGER).load()
-    assert (path.hex, path.learned_at) == ("one", departure("one").learned_at)
+    assert (path.hex, path.learned_at) == ("one", learned_at)
     points = [(f.location.lat, f.location.lon, f.altitude_ft, f.track_deg, f.seconds_to_closest) for f in path.fixes]
     expected = [(f.location.lat, f.location.lon, f.altitude_ft, f.track_deg, f.seconds_to_closest) for f in departure("one").fixes]
     assert points == [pytest.approx(p, abs=1e-4) for p in expected]
+
+
+def test_a_path_saved_without_its_time_zone_is_read_as_utc(tmp_path):
+    (tmp_path / "paths.json").write_text(json.dumps([{"hex": "old", "learnedAt": "2026-11-02T17:09:02", "fixes": []}]))
+    [path] = JsonPathStore(tmp_path / "paths.json", LOGGER).load()
+    assert path.learned_at == datetime(2026, 11, 2, 17, 9, 2, tzinfo=UTC)
 
 
 def test_a_broken_paths_file_starts_again(tmp_path):
