@@ -5,9 +5,13 @@
   ],
   "description": [
     "Renovate keeps the Python and npm dependencies, the Docker images and the SHA-pinned GitHub Actions current.",
-    "Every update, major ones included, merges through GitHub native auto-merge once the required checks pass. Those checks build the watcher's image too, so a base image that no longer builds fails before it merges."
+    "Every update, major ones included, merges through GitHub native auto-merge once the required checks pass. Those checks build the watcher's image too, so a base image that no longer builds fails before it merges.",
+    "Renovate assigns a pull request to the repository owner only when its checks fail, so a stuck update arrives as a GitHub notification instead of sitting unmerged."
   ],
   "dependencyDashboard": true,
   "automerge": true,
-  "platformAutomerge": true
+  "platformAutomerge": true,
+  "assignees": [
+    "christianjbrown"
+  ]
 }
