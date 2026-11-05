@@ -34,6 +34,11 @@ def test_parses_a_tar1090_record():
     assert aircraft.vertical_rate_fpm == -1088
 
 
+def test_a_callsign_the_decoder_could_not_read_is_no_callsign():
+    assert Aircraft.from_tar1090({"hex": "406b9c", "flight": "@@@@@@@@"}).callsign is None
+    assert Aircraft.from_tar1090({"hex": "406b9c", "flight": "EZY353A "}).callsign == "EZY353A"
+
+
 def test_a_record_without_position_or_details_still_parses():
     aircraft = Aircraft.from_tar1090({"hex": "406b9c", "alt_baro": "ground", "flight": "  "})
     assert aircraft.location is None
