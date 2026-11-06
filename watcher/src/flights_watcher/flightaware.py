@@ -4,6 +4,7 @@ adsbdb's fixed list gave old routes, the wrong leg of a round trip and a
 callsign in place of the flight number. AeroAPI knows which flight a callsign
 is right now, so the card gets the real flight number and direction."""
 
+import re
 from collections.abc import Collection
 from typing import Any, Protocol
 from urllib.error import HTTPError
@@ -82,10 +83,17 @@ def aeroapi_get(http: JsonHttp, url: str) -> Any:
         raise LookupFailed(str(error)) from error
 
 
+# FlightAware names a place it has no airport code for by where it is: "L 43.12092 6.20335".
+_POSITION = re.compile(r"^L (-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)$")
+
+
 def aeroapi_airport(raw: Any) -> Airport | None:
     if not isinstance(raw, dict):
         return None
     code = raw.get("code_iata") or raw.get("code_icao") or raw.get("code")
     # Some cities come with the airport tacked on, as in "Faro / Algarve Int. Faro".
     city = (raw.get("city") or "").split(" / ")[0].strip() or None
+    position = _POSITION.match(code or "")
+    if position:
+        return Airport(code=None, name=raw.get("name"), city=city, lat=float(position[1]), lon=float(position[2]))
     return Airport(code=code, name=raw.get("name"), city=city)
