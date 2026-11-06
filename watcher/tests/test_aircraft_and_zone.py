@@ -1,6 +1,7 @@
 from fakes import HOME, FakeHttp, plane
 from flights_watcher.aircraft import Aircraft
 from flights_watcher.geo import Location
+from flights_watcher.rotorcraft import KnownRotorcraft
 from flights_watcher.sources import Tar1090AircraftSource
 from flights_watcher.zone import Zone
 
@@ -51,6 +52,32 @@ def test_source_reads_every_aircraft_from_the_feed():
     http = FakeHttp({"http://pie/data/aircraft.json": {"aircraft": [{"hex": "a"}, {"hex": "b"}, {"nohex": 1}]}})
     found = Tar1090AircraftSource("http://pie/data/aircraft.json", http).aircraft()
     assert [a.hex for a in found] == ["a", "b"]
+
+
+class ListSource:
+    def __init__(self, aircraft: list[Aircraft]) -> None:
+        self._aircraft = aircraft
+
+    def aircraft(self) -> list[Aircraft]:
+        return self._aircraft
+
+
+def test_a_helicopter_that_sends_no_category_is_known_by_its_type():
+    source = ListSource(
+        [
+            plane("police", type_code="EC45", category=None),
+            plane("airliner", type_code="A320", category=None),
+            plane("glider", type_code="EC45", category="B1"),
+            plane("unknown", type_code=None, category=None),
+        ]
+    )
+    found = KnownRotorcraft(source, ["EC45"]).aircraft()
+    assert [a.category for a in found] == ["A7", None, "B1", None]
+
+
+def test_the_bundled_rotorcraft_types_include_common_helicopters():
+    found = KnownRotorcraft.bundled(ListSource([plane(type_code=code) for code in ("EC45", "EC35", "A139", "A320")])).aircraft()
+    assert [a.category for a in found] == ["A7", "A7", "A7", None]
 
 
 def test_zone_keeps_nearby_airborne_planes_nearest_first():

@@ -175,6 +175,15 @@ describe("drawing the nearest plane", () => {
     expect(plane).toEqual([0.03, 51.48]);
   });
 
+  it("frames a helicopter closer, with home, the helicopter and the whole trail it has flown", () => {
+    const { flightMap, map } = readyMap(planeMessage({ category: "A7", lon: 0.01 }));
+    flightMap.show(planeMessage({ category: "A7", lon: 0.012, lat: 51.479 }));
+    const [southWest, northEast, ...trail] = map.lastBounds.points;
+    expect(southWest[0]).toBeGreaterThan(-0.01);
+    expect(northEast[0]).toBeLessThan(0.01);
+    expect(trail).toEqual([[0.01, 51.48], [0.012, 51.479]]);
+  });
+
   it("leaves the camera alone when the map cannot frame the bounds", () => {
     const { flightMap, map } = readyMap();
     map.camera = null;

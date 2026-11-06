@@ -37,6 +37,8 @@ FULL_ENV = {
     "FOLLOWED_MONTHLY_LIMIT": "600",
     "AIR_AMBULANCE_CALLSIGNS": "hle, xyz",
     "POLICE_CALLSIGNS": "UKP",
+    "AIR_AMBULANCE_SQUAWKS": "0020",
+    "POLICE_SQUAWKS": "0032, 0045-0051",
     "QUIET_HOURS_EXCEPT": "Helicopters, military",
     "HOME_COUNTRY": " gb",
 }
@@ -60,6 +62,13 @@ def test_settings_read_every_value():
     assert settings.followed_monthly_limit == 600
     assert settings.air_ambulance_callsigns == ("HLE", "XYZ")
     assert settings.police_callsigns == ("UKP",)
+    assert settings.air_ambulance_squawks == ("0020",)
+    assert settings.police_squawks == ("0032", "0045", "0046", "0047", "0050", "0051")
+    assert Settings.from_env({**FULL_ENV, "POLICE_SQUAWKS": ""}).police_squawks == ()
+    with pytest.raises(ConfigError, match="0089 is not a squawk"):
+        Settings.from_env({**FULL_ENV, "POLICE_SQUAWKS": "0089"})
+    with pytest.raises(ConfigError, match="squawk range 0061-0041 runs backwards"):
+        Settings.from_env({**FULL_ENV, "POLICE_SQUAWKS": "0061-0041"})
     assert settings.quiet_hours_except == ("helicopters", "military")
     assert settings.home_country == "GB"
     assert Settings.from_env({**FULL_ENV, "QUIET_HOURS_EXCEPT": ""}).quiet_hours_except == ()

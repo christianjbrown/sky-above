@@ -87,6 +87,7 @@ from flights_watcher.naming import (
     NearestAirportCountry,
     Service,
     Services,
+    SquawkServices,
 )
 from flights_watcher.paths import (
     CameOverhead,
@@ -103,6 +104,7 @@ from flights_watcher.paths import (
 from flights_watcher.presence import Linger, MinimumShowing
 from flights_watcher.priority import ServicesStay
 from flights_watcher.rare import RareKinds
+from flights_watcher.rotorcraft import KnownRotorcraft
 from flights_watcher.schedule import QuietHours
 from flights_watcher.schedules import AeroApiSchedules
 from flights_watcher.sources import Tar1090AircraftSource
@@ -485,6 +487,10 @@ def watcher_for(
                 {code: Service("Air ambulance", "ambulance") for code in settings.air_ambulance_callsigns}
                 | {code: Service("Police", "police") for code in settings.police_callsigns}
             ),
+            SquawkServices(
+                {code: Service("Air ambulance", "ambulance") for code in settings.air_ambulance_squawks}
+                | {code: Service("Police", "police") for code in settings.police_squawks}
+            ),
             MilitaryService(),
         ]
     )
@@ -552,7 +558,7 @@ def watcher_for(
         ]
     )
     return Watcher(
-        source=HeardSource(Tar1090AircraftSource(settings.aircraft_url, http), status),
+        source=HeardSource(KnownRotorcraft.bundled(Tar1090AircraftSource(settings.aircraft_url, http)), status),
         zone=ServicesStay(
             OverheadAndApproaching(zone, Observing(recorder, approaching), closest, OVERHEAD_SOON_SECONDS),
             services,

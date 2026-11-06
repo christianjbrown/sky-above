@@ -22,7 +22,7 @@ your TV or smart display shows who it is and where it's headed, and reads it out
 - 🗣️ A voice that announces each plane ("from Alicante, to London Stansted, 1 kilometre away")
 - ⏱️ A heads-up for planes on their way ("overhead in about 4 minutes"), timed for when you actually hear it, or "overhead now" if it'll be right above you by then
 - 🧳 Flights you care about, yours or friends' and family's, followed from four hours before take-off until landing
-- 🚁 Air ambulance and police helicopters in their own colours, where your country gives them their own callsigns
+- 🚁 Air ambulance and police helicopters in their own colours, where your country gives them their own callsigns or squawks
 - 🪖 Military aircraft in olive, named by who flies them ("Royal Air Force, Airbus A400M Atlas")
 - 🚨 Planes in an emergency, anywhere your antenna can hear them: squawking 7700, 7600 or 7500, or
   diving or climbing far faster than any normal flight. They go red, take the screen until it's
@@ -269,6 +269,8 @@ most likely to change:
 | `CARD_MIN_SECONDS` | The shortest time a plane's card is up | seconds | `60` |
 | `AIR_AMBULANCE_CALLSIGNS` | Which planes get the air ambulance look | the code their callsigns start with, like `HLE` in the UK | empty |
 | `POLICE_CALLSIGNS` | Which planes get the police look | the same, like `UKP` in the UK | empty |
+| `AIR_AMBULANCE_SQUAWKS` | More planes that get the air ambulance look | the squawks set aside for them, ranges allowed | empty |
+| `POLICE_SQUAWKS` | More planes that get the police look | the same, like `0032,0041-0061` in the UK | empty |
 | `ALERT_URL` | Where the watchdog sends alerts | an ntfy topic address, or empty to only log them | empty |
 
 🗣️ **Picking a voice.** Have a listen on [Piper's samples page](https://rhasspy.github.io/piper-samples/),

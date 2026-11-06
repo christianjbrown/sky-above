@@ -19,6 +19,10 @@
   // However close the plane gets, the map still shows this much around home, as a
   // share of the zone's radius, so the zone and the plane passing through it stay in view.
   var CLOSEST_VIEW = 1.3;
+  // A helicopter hovers and circles over a few streets rather than crossing the zone, so
+  // its map frames home with only this much room round it, the helicopter and the whole
+  // trail it has flown, close enough to see where it has been.
+  var HELICOPTER_VIEW = 0.3;
   // How long each step of following the plane takes, about one update.
   var FOLLOW_MS = 1000;
   // How big an airliner is drawn: the plane on the card, and the others around it.
@@ -65,10 +69,11 @@
 
   // Home with room around it, and the plane: the map shrinks to this as the plane
   // comes in and grows again as it goes, so how close it passes is plain to see.
-  function view(home, radiusKm, position) {
-    var reach = radiusKm * CLOSEST_VIEW;
-    return new maplibregl.LngLatBounds(along(home, 225, reach * Math.SQRT2), along(home, 45, reach * Math.SQRT2))
-      .extend(position);
+  // Home with reach km of room round it, and every one of the points.
+  function view(home, reach, points) {
+    var bounds = new maplibregl.LngLatBounds(along(home, 225, reach * Math.SQRT2), along(home, 45, reach * Math.SQRT2));
+    points.forEach(function (point) { bounds.extend(point); });
+    return bounds;
   }
 
   function line(points) {
@@ -222,7 +227,11 @@
     this._planeMarker.setLngLat(position).setRotation(plane.trackDeg || 0);
     this._drawOthers(message.others || []);
 
-    var camera = this._map.cameraForBounds(view(home, message.radiusKm, position), { padding: 60, maxZoom: MAX_ZOOM });
+    var helicopter = shape(plane) === "helicopter";
+    var framed = helicopter
+      ? view(home, message.radiusKm * HELICOPTER_VIEW, this._trail)
+      : view(home, message.radiusKm * CLOSEST_VIEW, [position]);
+    var camera = this._map.cameraForBounds(framed, { padding: 60, maxZoom: MAX_ZOOM });
     if (camera) {
       camera.duration = fresh ? 0 : FOLLOW_MS;
       camera.easing = function (t) { return t; };
