@@ -130,12 +130,19 @@ def test_whereabouts_say_which_way_the_plane_is_heading():
     assert whereabouts.phrase({**south, "trackDeg": 355.0}).endswith("heading North")
 
 
-def test_only_flights_with_both_airports_are_announced():
+def test_a_flight_with_no_route_goes_by_its_callsign_and_what_it_is():
     wording = AnnouncementWording(LONDON, NOWHERE)
-    police = {"hex": "a", "callsign": "UKP15", "airline": "Police", "helicopter": True}
-    assert wording.text(police) is None
-    assert wording.text({**CARD, "destination": None}) is None
-    assert wording.text({"hex": "c", "callsign": "GEUYM"}) is None
+    charter = {"hex": "a", "callsign": "SXN39", "aircraft": "Agusta AW-139", "helicopter": True}
+    assert wording.text(charter) == "S X N, 3 9, Agusta AW-139 helicopter."
+    assert wording.text({**charter, "aircraft": None}) == "S X N, 3 9, helicopter."
+    assert wording.text({**charter, "aircraft": "Robinson R44 Helicopter"}) == "S X N, 3 9, Robinson R44 Helicopter."
+    assert wording.text({**CARD, "destination": None, "aircraft": "Boeing 737-800"}) == "F R, 2 0 S W, Boeing 737-800."
+    assert wording.text({"hex": "c", "callsign": "GEUYM"}) == "G E U Y M."
+
+
+def test_a_plane_waits_for_its_callsign_before_it_is_announced():
+    wording = AnnouncementWording(LONDON, NOWHERE)
+    assert wording.text({"hex": "a", "callsign": None, "aircraft": "Agusta AW-139", "helicopter": True}) is None
 
 
 class CountingSynth:
@@ -349,7 +356,7 @@ def test_a_flight_with_nothing_to_say_is_not_announced(tmp_path):
     announcer = Announcer(
         AnnouncementWording(LONDON, NOWHERE), NOWHERE, INSTANT, SpeechClips(tmp_path, "speech/", 5, synth), Announced(), LOG
     )
-    assert announcer.speech_for({**CARD, "destination": None}) is None
+    assert announcer.speech_for({**CARD, "callsign": None, "flightNumber": None}) is None
     assert synth.texts == []
 
 
