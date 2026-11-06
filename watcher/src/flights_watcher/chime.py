@@ -1,8 +1,8 @@
 """Hiding the chime the Hub plays whenever a Cast app starts.
 
 The chime is part of the Hub's firmware and has no setting, so the Hub is muted
-for the launch and unmuted once the chime has passed. The watcher only launches
-on an idle Hub, so nothing else is silenced."""
+for the launch and unmuted once the chime has passed. Whatever was playing
+before has already been replaced by the launch, so nothing else is silenced."""
 
 from collections.abc import Callable
 from typing import Any, Protocol
