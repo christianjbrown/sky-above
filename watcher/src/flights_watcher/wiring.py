@@ -87,6 +87,7 @@ from flights_watcher.naming import (
     NearestAirportCountry,
     Service,
     Services,
+    SquawkServices,
 )
 from flights_watcher.paths import (
     CameOverhead,
@@ -485,6 +486,10 @@ def watcher_for(
             Services(
                 {code: Service("Air ambulance", "ambulance") for code in settings.air_ambulance_callsigns}
                 | {code: Service("Police", "police") for code in settings.police_callsigns}
+            ),
+            SquawkServices(
+                {code: Service("Air ambulance", "ambulance") for code in settings.air_ambulance_squawks}
+                | {code: Service("Police", "police") for code in settings.police_squawks}
             ),
             MilitaryService(),
         ]

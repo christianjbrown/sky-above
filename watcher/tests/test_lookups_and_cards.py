@@ -28,6 +28,7 @@ from flights_watcher.naming import (
     NearestAirportCountry,
     Service,
     Services,
+    SquawkServices,
     airline_code,
 )
 from flights_watcher.zone import Sighting, Zone
@@ -338,6 +339,13 @@ def test_military_planes_are_a_service_named_by_who_flies_them():
     assert finder.of(plane("unnamed", military=True, operator=None)) == Service("Military aircraft", "military")
     assert finder.of(plane("hems", callsign="HLE27")) == Service("Air ambulance", "ambulance")
     assert finder.of(plane()) is None
+
+
+def test_a_service_can_be_known_by_its_squawk():
+    finder = SquawkServices({"0043": Service("Police", "police")})
+    assert finder.of(plane("met", callsign="GMPSC", squawk="0043")) == Service("Police", "police")
+    assert finder.of(plane("other", squawk="7000")) is None
+    assert finder.of(plane("silent", squawk=None)) is None
 
 
 def test_an_answer_with_no_route_in_it_is_no_route():

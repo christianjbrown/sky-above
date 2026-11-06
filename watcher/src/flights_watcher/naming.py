@@ -60,6 +60,19 @@ class Services:
         return self._services.get(code) if code else None
 
 
+class SquawkServices:
+    """Emergency services, known by the squawk air traffic control gives them. Some
+    countries set codes aside for a service (in the UK 0032 and 0041 to 0061 are for
+    police air support), which picks out a police helicopter flying under its own
+    registration, as many do between jobs."""
+
+    def __init__(self, services: Mapping[str, Service]) -> None:
+        self._services = services
+
+    def of(self, plane: Aircraft) -> Service | None:
+        return self._services.get(plane.squawk) if plane.squawk else None
+
+
 class MilitaryService:
     """Military aircraft, as the decoder's database marks them, named by who flies them
     when it knows ("Royal Air Force")."""

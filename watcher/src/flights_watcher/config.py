@@ -83,6 +83,9 @@ class Settings:
     # The operator codes at the front of these services' callsigns, such as HLE.
     air_ambulance_callsigns: tuple[str, ...]
     police_callsigns: tuple[str, ...]
+    # The squawks set aside for these services, each four octal digits.
+    air_ambulance_squawks: tuple[str, ...]
+    police_squawks: tuple[str, ...]
     # Kinds of aircraft let through both kinds of quiet hours: helicopters, military.
     quiet_hours_except: tuple[str, ...]
     # Two-letter country code, or empty to go by the nearest airport.
@@ -122,6 +125,8 @@ class Settings:
                 followed_monthly_limit=int(env.get("FOLLOWED_MONTHLY_LIMIT", "").strip() or 0),
                 air_ambulance_callsigns=_codes(env.get("AIR_AMBULANCE_CALLSIGNS", "")),
                 police_callsigns=_codes(env.get("POLICE_CALLSIGNS", "")),
+                air_ambulance_squawks=_squawks(env.get("AIR_AMBULANCE_SQUAWKS", "")),
+                police_squawks=_squawks(env.get("POLICE_SQUAWKS", "")),
                 quiet_hours_except=_kinds(env.get("QUIET_HOURS_EXCEPT", "")),
                 home_country=env.get("HOME_COUNTRY", "").strip().upper(),
             )
@@ -157,6 +162,28 @@ def _kinds(value: str) -> tuple[str, ...]:
 def _codes(value: str) -> tuple[str, ...]:
     """A comma separated list of operator codes, upper cased: "hle, xyz" is ("HLE", "XYZ")."""
     return tuple(code.strip().upper() for code in value.split(",") if code.strip())
+
+
+def _squawks(value: str) -> tuple[str, ...]:
+    """A comma separated list of squawks and ranges of them: "0032, 0041-0047" is 0032
+    and 0041 to 0047. Squawks are octal, so 0047 is followed by 0050."""
+    found: list[str] = []
+    for item in value.split(","):
+        first, _, last = item.strip().partition("-")
+        if not first:
+            continue
+        start, end = _squawk(first), _squawk(last or first)
+        if end < start:
+            raise ValueError(f"squawk range {item.strip()} runs backwards")
+        found.extend(f"{code:04o}" for code in range(start, end + 1))
+    return tuple(found)
+
+
+def _squawk(text: str) -> int:
+    code = text.strip()
+    if len(code) != 4 or any(digit not in "01234567" for digit in code):
+        raise ValueError(f"{code} is not a squawk")
+    return int(code, 8)
 
 
 def _host_and_port(value: str) -> tuple[str, int] | None:
