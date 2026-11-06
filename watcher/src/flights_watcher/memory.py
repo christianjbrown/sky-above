@@ -147,6 +147,21 @@ class RememberedRouteLookup:
         return self._memory.recall(callsign, lambda: self._inner.route(callsign), asdict, _route, _both_ends)
 
 
+class KeptRouteLookup:
+    """The route kept on disk for a callsign, however old, without ever asking for one.
+    For working out where a plane that is not on the card is going: most of those never
+    come near, and a paid lookup for each would spend the month's allowance in days. The
+    planes that do get a card are looked up then, and kept, so a flight that passes
+    every day is known from its second day on."""
+
+    def __init__(self, store: AnswerStore) -> None:
+        self._store = store
+
+    def route(self, callsign: str) -> Route | None:
+        kept = self._store.get(callsign)
+        return _route(kept.value) if kept else None
+
+
 class RememberedOperatorNames:
     def __init__(self, inner: OperatorNames, memory: Memory) -> None:
         self._inner = inner
