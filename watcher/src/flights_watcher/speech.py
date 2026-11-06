@@ -110,9 +110,9 @@ class SpokenArrival:
 
 class AnnouncementWording:
     """FR20SW, from Alicante, to London Stansted, 1.1 kilometres away, in a
-    North-North-Easterly direction, heading West. Only flights with a known start and end are
-    announced. Airports that share their city with others are named in full, everywhere
-    else by its city, and flight numbers are read letter by letter."""
+    North-North-Easterly direction, heading West. A flight with no route known goes by its
+    callsign and what it is instead. Airports that share their city with others are named
+    in full, everywhere else by its city, and flight numbers are read letter by letter."""
 
     def __init__(self, named_airports: Collection[str], whereabouts: Whereabouts) -> None:
         self._named = named_airports
@@ -128,17 +128,22 @@ class AnnouncementWording:
     def lead_in(self, card: dict[str, Any]) -> str | None:
         """The flight and its route, read before where the plane is. An air ambulance, the
         police or the military have no route, so they go by what they are, and a military
-        plane by what it is too: "Royal Air Force, Airbus A400M Atlas"."""
+        plane by what it is too: "Royal Air Force, Airbus A400M Atlas". A charter, a private
+        plane, or any flight FlightAware has no route for, goes by its callsign and what it
+        is: "S X N, 3 9, Agusta AW-139 helicopter". One whose callsign is not heard yet waits
+        for it, as the callsign is half of what makes it a flight already announced."""
         if card.get("service") and card.get("airline"):
             if card["service"] == "military" and card.get("aircraft"):
                 return f"{card['airline']}, {card['aircraft']}"
             return f"{card['airline']} helicopter" if card.get("helicopter") else card["airline"]
         flight = card.get("flightNumber") or card.get("callsign")
-        origin, destination = self._place(card.get("origin")), self._place(card.get("destination"))
-        if not (flight and origin and destination):
+        if not flight:
             return None
+        origin, destination = self._place(card.get("origin")), self._place(card.get("destination"))
         # The commas give the voice a breath after the flight number and between the parts.
-        return ", ".join([spelled_flight(flight), f"from {origin}", f"to {destination}"])
+        if origin and destination:
+            return ", ".join([spelled_flight(flight), f"from {origin}", f"to {destination}"])
+        return ", ".join(part for part in (spelled_flight(flight), _what_it_is(card)) if part)
 
     def _place(self, airport: dict[str, Any] | None) -> str | None:
         if not airport:
@@ -149,6 +154,13 @@ class AnnouncementWording:
             # adsbdb says "London Stansted Airport", FlightAware just "Stansted".
             return name if name.startswith(city) else f"{city} {name}"
         return city or name or None
+
+
+def _what_it_is(card: dict[str, Any]) -> str | None:
+    aircraft = card.get("aircraft")
+    if not card.get("helicopter") or "helicopter" in (aircraft or "").lower():
+        return aircraft
+    return f"{aircraft} helicopter" if aircraft else "helicopter"
 
 
 # Three letters (BAW86S) or two characters (BA1340, U21234) before the number starts.
@@ -268,7 +280,7 @@ class ClipMaker(Protocol):
 
 class Announcer:
     """Announces the nearest plane each time a new one takes over, once per flight, as
-    soon as its card says where it is flying from and to: one that was announced and
+    soon as its card has something to say about it: one that was announced and
     comes back to being nearest stays quiet, so two planes swapping places do not talk
     over each other. The clip is handed out with
     every update while its plane stays nearest, until the card is taken down; a card
