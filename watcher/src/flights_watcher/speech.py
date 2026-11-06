@@ -11,7 +11,7 @@ import pathlib
 import re
 import socket
 import wave
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 from datetime import datetime
 from typing import Any, BinaryIO, Protocol
 
@@ -232,6 +232,23 @@ def _wav(pcm: bytes, audio_format: dict[str, Any]) -> bytes:
         clip.setframerate(audio_format["rate"])
         clip.writeframes(pcm)
     return out.getvalue()
+
+
+class SaidAsWords:
+    """Piper spells out a word written in capitals, which is right for most of them in an
+    aircraft's name but wrong where the capitals are only styling: a Boeing 737 MAX is
+    said "max", not "M A X". Each such word is written the way it is said before the
+    text reaches the voice."""
+
+    def __init__(self, inner: SpeechSynthesizer, words: Mapping[str, str]) -> None:
+        self._inner = inner
+        self._pattern = re.compile(r"\b(" + "|".join(map(re.escape, words)) + r")\b") if words else None
+        self._words = words
+
+    def synthesize(self, text: str) -> bytes:
+        if self._pattern is not None:
+            text = self._pattern.sub(lambda match: self._words[match.group(1)], text)
+        return self._inner.synthesize(text)
 
 
 class SpeechClips:
