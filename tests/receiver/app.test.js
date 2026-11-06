@@ -278,6 +278,32 @@ describe("in an ordinary browser", () => {
     expect(text("flight")).toBe("BA87");
   });
 
+  it("goes back to watching the sky once the plane has gone, and back to the card for the next", async () => {
+    const clear = () => Promise.resolve({ ok: true, json: () => Promise.resolve({ type: "clear" }) });
+    responses.push(() => Promise.resolve({ ok: true, json: () => Promise.resolve(planesMessage({ service: "police" })) }));
+    responses.push(clear);
+    responses.push(() => Promise.resolve({ ok: true, json: () => Promise.resolve(planesMessage()) }));
+    await open();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(screenClasses()).toEqual(["service-police"]);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(screenClasses()).toEqual(["waiting"]);
+    expect(text("waiting-line")).toBe("Watching the sky…");
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(screenClasses()).toEqual([]);
+    expect(text("flight")).toBe("BA86S");
+  });
+
+  it("stops redrawing a followed flight once the sky is clear", async () => {
+    responses.push(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ type: "followed", homeCountry: "GB", flight: { ident: "BA4321", phase: "waiting" } }) }));
+    responses.push(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ type: "clear" }) }));
+    await open();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(screenClasses()).toEqual(["followed"]);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(screenClasses()).toEqual(["waiting"]);
+  });
+
   it("keeps asking after an answer that is not OK, or no answer at all", async () => {
     responses.push(() => Promise.resolve({ ok: false }));
     responses.push(() => Promise.reject(new Error("offline")));

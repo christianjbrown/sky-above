@@ -63,7 +63,20 @@
     return emergency.squawk ? "Squawk " + emergency.squawk + " \u00b7 " + emergency.label : emergency.label;
   }
 
+  // Only a browser hears this: the watcher stops casting to the Hub instead, but the
+  // live card it serves the browser goes back to "clear" once the plane has gone.
+  function showClear() {
+    screen.classList.remove.apply(screen.classList, LOOKS);
+    screen.classList.add("waiting");
+    followedCard.hide();
+    flightMap.forget();
+  }
+
   function render(message) {
+    if (message && message.type === "clear") {
+      showClear();
+      return;
+    }
     if (message) { parts.setHomeCountry(message.homeCountry); }
     if (message && message.type === "followed" && message.flight) {
       screen.classList.remove.apply(screen.classList, LOOKS);
