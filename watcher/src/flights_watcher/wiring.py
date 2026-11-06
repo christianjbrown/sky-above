@@ -115,6 +115,7 @@ from flights_watcher.speech import (
     EndOfShowing,
     InterruptedByEmergency,
     QuietVoice,
+    SaidAsWords,
     Silence,
     SpeechClips,
     SpokenArrival,
@@ -289,6 +290,9 @@ EMERGENCIES_ANNOUNCED_REMEMBERED = 20
 # further than this from home.
 SERVICES_KEPT = ("ambulance", "police", "military")
 SERVICE_HOLD_KM = 5
+# Words in aircraft names written in capitals but said as words, and how to write them
+# so the voice says them that way.
+SAID_AS_WORDS = {"MAX": "Max"}
 # Where nginx serves the clip folder, relative to the receiver page.
 SPEECH_URL_PREFIX = "speech/"
 
@@ -389,7 +393,10 @@ def voices(settings: Settings, clock: Clock, rare: RareKinds, logger: logging.Lo
     host, port = settings.speech_server
     launch_start = CAST_LAUNCH_SECONDS + (CHIME_SECONDS + UNMUTE_SETTLE_SECONDS if settings.mute_chime else 0)
     clips = SpeechClips(
-        pathlib.Path(settings.speech_dir), SPEECH_URL_PREFIX, SPEECH_CLIPS_KEPT, WyomingSpeech(host, port, SPEECH_TIMEOUT_SECONDS)
+        pathlib.Path(settings.speech_dir),
+        SPEECH_URL_PREFIX,
+        SPEECH_CLIPS_KEPT,
+        SaidAsWords(WyomingSpeech(host, port, SPEECH_TIMEOUT_SECONDS), SAID_AS_WORDS),
     )
     wording = AnnouncementWording(NAMED_AIRPORTS, SpokenWhereabouts(settings.home))
     announcer = Announcer(

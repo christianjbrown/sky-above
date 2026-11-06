@@ -17,6 +17,7 @@ from flights_watcher.speech import (
     Announcer,
     EndOfShowing,
     QuietVoice,
+    SaidAsWords,
     Silence,
     SpeechClips,
     SpeechFailed,
@@ -362,3 +363,26 @@ def test_a_flight_with_nothing_to_say_is_not_announced(tmp_path):
 
 def test_silence_has_nothing_to_wind_up_when_a_plane_goes():
     assert Silence().ended() is None
+
+
+class HeardSynth:
+    def __init__(self) -> None:
+        self.texts: list[str] = []
+
+    def synthesize(self, text: str) -> bytes:
+        self.texts.append(text)
+        return b"wav"
+
+
+def test_a_word_styled_in_capitals_is_said_as_a_word():
+    heard = HeardSynth()
+    voice = SaidAsWords(heard, {"MAX": "Max"})
+    assert voice.synthesize("R Y R, Boeing 737 MAX 8, from Alicante.") == b"wav"
+    voice.synthesize("Airbus A320, MAXIMUM, AMAX")
+    assert heard.texts == ["R Y R, Boeing 737 Max 8, from Alicante.", "Airbus A320, MAXIMUM, AMAX"]
+
+
+def test_with_no_words_to_change_the_text_goes_through_as_it_is():
+    heard = HeardSynth()
+    SaidAsWords(heard, {}).synthesize("Boeing 737 MAX 8")
+    assert heard.texts == ["Boeing 737 MAX 8"]
