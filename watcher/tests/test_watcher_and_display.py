@@ -337,7 +337,7 @@ def test_an_emergency_is_looked_for_among_every_plane_heard_even_in_quiet_hours(
     assert display.shown == [emergencies.card]
 
 
-def test_cast_display_launches_only_on_an_idle_hub():
+def test_cast_display_launches_once_on_an_idle_hub():
     device = FakeDevice(running="E8C28D3C", idle=True)
     display = CastDisplay(device, APP, LOG)
     assert display.show({"planes": []})
@@ -360,12 +360,15 @@ def test_cast_display_launches_again_once_the_hub_covers_the_card():
     assert len(device.sent) == 3
 
 
-def test_cast_display_leaves_a_busy_hub_alone():
+def test_cast_display_takes_the_screen_from_whatever_is_playing(caplog):
     device = FakeDevice(running="CC32E753", idle=False)
     display = CastDisplay(device, APP, LOG)
-    assert not display.show({"planes": []})
-    assert device.launched == []
-    assert device.sent == []
+    with caplog.at_level(logging.INFO, logger="test"):
+        assert display.show({"planes": []})
+        assert display.show({"planes": [1]})
+    assert device.launched == [APP]
+    assert len(device.sent) == 2
+    assert [r.getMessage() for r in caplog.records] == ["casting to the Hub over CC32E753"]
 
 
 def test_cast_display_only_quits_its_own_app():
@@ -436,15 +439,6 @@ def test_runner_reports_the_same_failure_only_once_and_survives_a_hub_that_will_
     assert Failing.calls == 3
     assert messages.count("tick failed: ConnectionError: feed down") == 1
     assert any("could not hand the Hub back on shutdown: no answer" in m for m in messages)
-
-
-def test_cast_display_mentions_a_busy_hub_once_until_it_gets_a_turn(caplog):
-    device = FakeDevice(running="CC32E753", idle=False)
-    display = CastDisplay(device, APP, LOG)
-    with caplog.at_level(logging.INFO, logger="test"):
-        assert not display.show({"planes": []})
-        assert not display.show({"planes": []})
-    assert [r.getMessage() for r in caplog.records] == ["Hub is busy with CC32E753, not casting"]
 
 
 def test_logging_display_names_a_followed_flight_when_it_changes(caplog):

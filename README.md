@@ -229,8 +229,9 @@ Each followed flight costs roughly 50 cents to $2 in AeroAPI lookups.
   GitHub every five minutes. New versions get built in the background, but only swapped in when
   the card is clear, so nobody gets cut off mid-sentence. Quiet hours make sure there's a gap every
   night.
-- 🎵 **Polite.** It only casts when the screen is idle, so it won't interrupt music, a film or a
-  timer.
+- 🛬 **Planes come first.** When there's one to show, it takes the screen from whatever is on it,
+  music and films included, and hands it back once the sky is clear. Anything else casting to the
+  same screen just has to wait its turn.
 - 🧪 **Try it without a plane.** Open `http://skyabove.local:8090/?demo` for a made-up one. Also
   `?demo=followed`, `?demo=taxiing`, `?demo=flying`, `?demo=landed`, `?demo=ambulance`, `?demo=police`, `?demo=military` and `?demo=emergency`.
 - 🏠 **Privacy.** Your location stays in `.env` on the Pi. The Pi does ask FlightAware about planes
@@ -421,8 +422,7 @@ Pi's home address, set `CERT_DOMAIN`, `SPACESHIP_API_KEY` and `SPACESHIP_API_SEC
 run `docker compose up -d`. Then restart the receiver and change the Cast app's URL to
 `https://<your domain>/`.
 
-Got another app on the same Pi that wants https too, like
-[Mind the Gap](https://github.com/christianjbrown/mind-the-gap)? Only one thing can have port 443, so
+Got another app on the same Pi that wants https too? Only one thing can have port 443, so
 Sky Above serves it for them: point that app's own name at the Pi as well, add it to `OTHER_SITES` as
 `name=port` (for example `tube.example.com=8095`), and run `docker compose up -d`. Each name gets
 its own certificate, and the receiver passes it through to that port once the certificate is there.

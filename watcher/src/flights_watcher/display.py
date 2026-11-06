@@ -34,33 +34,30 @@ class CastDevice(Protocol):
 
 
 class CastDisplay:
-    """Only takes the screen when nothing else is on it, and only gives back what it took."""
+    """A plane comes first: takes the screen from whatever is on it, music and films
+    included, and only gives back what it took."""
 
     def __init__(self, device: CastDevice, app_id: str, logger: logging.Logger) -> None:
         self._device = device
         self._app_id = app_id
         self._logger = logger
-        self._reported_busy = False
 
     def show(self, message: dict[str, Any]) -> bool:
-        if self._device.running_app_id() != self._app_id:
-            if not self._device.is_idle():
-                if not self._reported_busy:
-                    self._logger.info("Hub is busy with %s, not casting", self._device.running_app_id())
-                    self._reported_busy = True
-                return False
-            self._logger.info("casting to the Hub")
+        running = self._device.running_app_id()
+        if running != self._app_id:
+            if self._device.is_idle():
+                self._logger.info("casting to the Hub")
+            else:
+                self._logger.info("casting to the Hub over %s", running)
             self._device.launch(self._app_id)
         elif self._device.is_hidden():
             self._logger.info("the Hub covered the card, launching it again")
             self._device.quit()
             self._device.launch(self._app_id)
-        self._reported_busy = False
         self._device.send(message)
         return True
 
     def clear(self) -> None:
-        self._reported_busy = False
         if self._device.running_app_id() == self._app_id:
             self._logger.info("sky is clear, handing the Hub back")
             self._device.quit()
