@@ -10,5 +10,7 @@ cd "$(dirname "$0")/.."
 here=$(pwd)
 git rev-parse HEAD > .deployed
 line="*/5 * * * * $here/tools/deploy-when-clear.sh 2>&1 | logger -t sky-above-deploy"
-{ crontab -l 2>/dev/null | grep -v 'deploy-when-clear.sh' || true; echo "$line"; } | crontab -
+# Only this checkout's own line is replaced: another app on the Pi may have a
+# deploy-when-clear.sh of its own in the same crontab.
+{ crontab -l 2>/dev/null | grep -vF "$here/tools/deploy-when-clear.sh" || true; echo "$line"; } | crontab -
 echo "installed: $line"
