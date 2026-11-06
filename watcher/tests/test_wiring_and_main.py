@@ -35,6 +35,7 @@ def test_with_everything_switched_on_every_part_is_built(tmp_path):
     assert app.live_server is not None
     assert found.operator_names is not None
     assert not isinstance(found.photos, NoPhotos)
+    assert found.known_routes is not found.routes
     assert isinstance(voice.planes, QuietVoice) and isinstance(voice.followed, QuietVoice)
     assert isinstance(wiring.followed_standby(full, found, voice, FakeClock(), LOGGER), FollowedStandby)
 
@@ -58,6 +59,7 @@ def test_with_everything_switched_off_the_watcher_still_runs_on_its_own(tmp_path
 def test_followed_flights_need_aeroapi_as_well_as_a_list(tmp_path):
     adsbdb_only = settings(tmp_path)
     found = wiring.lookups(adsbdb_only, UrllibJsonHttp("test", 1), FakeClock(), LOGGER)
+    assert found.known_routes is found.routes
     voice = wiring.voices(adsbdb_only, FakeClock(), RareKinds(()), LOGGER)
     assert isinstance(wiring.followed_standby(adsbdb_only, found, voice, FakeClock(), LOGGER), NothingOnStandby)
 

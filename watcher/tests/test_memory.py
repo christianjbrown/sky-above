@@ -8,6 +8,7 @@ from flights_watcher.caching import CachedRouteLookup, TtlCache
 from flights_watcher.lookups import Airport, LookupFailed, Route
 from flights_watcher.memory import (
     AllFresh,
+    KeptRouteLookup,
     Memory,
     RememberedOperatorNames,
     RememberedRouteLookup,
@@ -153,3 +154,13 @@ def test_the_memory_cache_asks_again_about_nothing_sooner_than_a_route():
     clock.seconds = 601 + 3600
     assert routes.route("BAW879") == BA879
     assert inner.asked == 2
+
+
+def test_a_kept_route_is_given_however_old_without_ever_asking(tmp_path):
+    clock = FakeClock()
+    store = SqliteAnswerStore(str(tmp_path / "lookups.sqlite3"), "route", LOG)
+    kept = KeptRouteLookup(store)
+    assert kept.route("BAW879") is None
+    remembered(tmp_path, clock, StubRoutes()).route("BAW879")
+    clock.at += timedelta(days=60)
+    assert kept.route("BAW879") == BA879

@@ -69,6 +69,7 @@ from flights_watcher.lookups import (
 )
 from flights_watcher.memory import (
     AllFresh,
+    KeptRouteLookup,
     Memory,
     RememberedOperatorNames,
     RememberedRouteLookup,
@@ -295,6 +296,8 @@ SPEECH_URL_PREFIX = "speech/"
 @dataclass(frozen=True)
 class Lookups:
     routes: RouteLookup
+    # Routes for planes that are not on the card, which must not cost a lookup.
+    known_routes: RouteLookup
     photos: PhotoLookup
     operator_names: OperatorNames | None
     airport_tidiers: Sequence[AirportTidier]
@@ -332,8 +335,11 @@ def build(settings: Settings, clock: Clock, logger: logging.Logger) -> App:
 
 
 def lookups(settings: Settings, http: JsonHttp, clock: Clock, logger: logging.Logger) -> Lookups:
-    """Routes and airline names from AeroAPI when there is a key, else from adsbdb, and photos."""
+    """Routes and airline names from AeroAPI when there is a key, else from adsbdb, and photos.
+    AeroAPI is paid by the lookup, so only planes on the card are asked about; anything
+    else goes by the routes already kept. adsbdb is free, so it answers for both."""
     routes: RouteLookup = NoRoutes()
+    known_routes: RouteLookup | None = None
     operator_names: OperatorNames | None = None
     if settings.aeroapi_key:
         aeroapi = BudgetedHttp(
@@ -341,6 +347,7 @@ def lookups(settings: Settings, http: JsonHttp, clock: Clock, logger: logging.Lo
             MonthlyBudget(settings.aeroapi_monthly_limit, pathlib.Path(settings.state_dir) / "aeroapi.json", clock),
         )
         answers = str(pathlib.Path(settings.state_dir) / ANSWERS_FILE)
+        known_routes = KeptRouteLookup(SqliteAnswerStore(answers, "route", logger))
         operator_names = CachedOperatorNames(
             RememberedOperatorNames(
                 AeroApiOperatorNames(settings.aeroapi_url, aeroapi),
@@ -370,7 +377,9 @@ def lookups(settings: Settings, http: JsonHttp, clock: Clock, logger: logging.Lo
         photos = CachedPhotoLookup(
             PlanespottersPhotoLookup(settings.photo_api_url, http), TtlCache(clock, LOOKUP_TTL_SECONDS, LOOKUP_CACHE_ENTRIES)
         )
-    return Lookups(TidiedRoutes(RetryLater(routes, clock, ROUTE_RETRY_SECONDS), airport_tidiers), photos, operator_names, airport_tidiers)
+    tidied = TidiedRoutes(RetryLater(routes, clock, ROUTE_RETRY_SECONDS), airport_tidiers)
+    known = TidiedRoutes(known_routes, airport_tidiers) if known_routes else tidied
+    return Lookups(tidied, known, photos, operator_names, airport_tidiers)
 
 
 def voices(settings: Settings, clock: Clock, rare: RareKinds, logger: logging.Logger) -> Voices:
@@ -498,7 +507,7 @@ def watcher_for(
     paths = LearnedPaths(
         JsonPathStore(pathlib.Path(settings.state_dir) / PATHS_FILE, logger), PATH_LIKENESS, PATHS_KEPT, PATH_KEPT_FOR, clock
     )
-    bound = DestinationBound(found.routes, settings.home, logger)
+    bound = DestinationBound(found.known_routes, settings.home, logger)
     misses = LearnedPaths(
         JsonPathStore(pathlib.Path(settings.state_dir) / MISSES_FILE, logger), PATH_LIKENESS, PATHS_KEPT, PATH_KEPT_FOR, clock
     )

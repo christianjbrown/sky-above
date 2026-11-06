@@ -351,7 +351,9 @@ Both need your exact position for MLAT. Both let you hide it from your public st
   Once two planes heading the same way have missed from the same spot, and none heading that way
   has come overhead from there, a straight line from that spot stops counting. Planes off one
   runway share the climb out and split by destination, so a flight that turns north and one that
-  comes your way are told apart. Those notes live in `missed.json`.
+  comes your way are told apart. Those notes live in `missed.json`. With an AeroAPI key, the
+  direction comes only from routes already looked up for a card, so a plane that never comes
+  near costs nothing; a flight that passes daily is known from its second day.
 - The card stays 30 seconds after the plane leaves (`LINGER_SECONDS`), and at least a minute in all
   (`CARD_MIN_SECONDS`).
 - Places in your own country (`HOME_COUNTRY`) have no flag. Leave it empty and it goes by the
