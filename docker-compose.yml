@@ -155,7 +155,8 @@ services:
   # and, once the certs service has a certificate, https. The Cast app is
   # unpublished, so the page never has to live on the internet: CERT_DOMAIN
   # points at the Pi's home address. It also passes the watcher's live card
-  # through to browsers, reaching the watcher on the host.
+  # through to browsers, reaching the watcher on the host, and serves any
+  # OTHER_SITES over https on their behalf, as only one thing can have port 443.
   receiver:
     image: nginx:alpine
     container_name: receiver
@@ -168,6 +169,7 @@ services:
     environment:
       - LIVE_PORT=${LIVE_PORT:-8091}
       - CERT_DOMAIN=${CERT_DOMAIN:-}
+      - OTHER_SITES=${OTHER_SITES:-}
       # Templates render into /etc/nginx, so the shared locations and the https
       # server land beside conf.d rather than in it.
       - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
@@ -179,11 +181,14 @@ services:
       - certs:/certs:ro
       - ./nginx/templates:/etc/nginx/templates:ro
       - ./nginx/https.sh:/docker-entrypoint.d/40-https.sh:ro
+      # Kept out of templates, whose ${} filling would empty nginx's own $host.
+      - ./nginx/other-site.conf:/etc/nginx/other-site.conf.in:ro
 
-  # Gets and renews the Let's Encrypt certificate for CERT_DOMAIN, proving it
-  # owns the name with a short-lived DNS record made through Spaceship's API,
-  # so nothing on the Pi has to be reachable from the internet. It checks twice
-  # a day and only renews once a third of the certificate's life is left.
+  # Gets and renews a Let's Encrypt certificate for CERT_DOMAIN and for each of
+  # OTHER_SITES, proving it owns each name with a short-lived DNS record made
+  # through Spaceship's API, so nothing on the Pi has to be reachable from the
+  # internet. It checks twice a day and only renews once a third of a
+  # certificate's life is left, trying again in an hour if any name failed.
   certs:
     image: goacme/lego:v5.6.0
     container_name: certs
@@ -194,14 +199,17 @@ services:
       - |
         while true; do
           if [ -z "$$CERT_DOMAIN" ]; then sleep 86400; continue; fi
-          if /lego run --domains "$$CERT_DOMAIN" --dns spaceship --accept-tos --path /certs; then
-            sleep 43200
-          else
-            sleep 3600
-          fi
+          names="$$CERT_DOMAIN"
+          for site in $$OTHER_SITES; do names="$$names $${site%%=*}"; done
+          wait=43200
+          for name in $$names; do
+            /lego run --domains "$$name" --dns spaceship --accept-tos --path /certs || wait=3600
+          done
+          sleep "$$wait"
         done
     environment:
       - CERT_DOMAIN=${CERT_DOMAIN:-}
+      - OTHER_SITES=${OTHER_SITES:-}
       - SPACESHIP_API_KEY=${SPACESHIP_API_KEY:-}
       - SPACESHIP_API_SECRET=${SPACESHIP_API_SECRET:-}
     volumes:

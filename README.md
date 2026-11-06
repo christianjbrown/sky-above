@@ -421,6 +421,12 @@ Pi's home address, set `CERT_DOMAIN`, `SPACESHIP_API_KEY` and `SPACESHIP_API_SEC
 run `docker compose up -d`. Then restart the receiver and change the Cast app's URL to
 `https://<your domain>/`.
 
+Got another app on the same Pi that wants https too, like
+[Mind the Gap](https://github.com/christianjbrown/mind-the-gap)? Only one thing can have port 443, so
+Sky Above serves it for them: point that app's own name at the Pi as well, add it to `OTHER_SITES` as
+`name=port` (for example `tube.example.com=8095`), and run `docker compose up -d`. Each name gets
+its own certificate, and the receiver passes it through to that port once the certificate is there.
+
 Over https, a link to the page shares with a preview card 🖼️ (`receiver/og.jpg`, drawn from
 `docs/og-card.html`). Previews need the image's full address, which nginx fills in from
 `CERT_DOMAIN`.
