@@ -7,5 +7,9 @@ server {
     server_name ${CERT_DOMAIN};
     ssl_certificate /certs/certificates/${CERT_DOMAIN}.crt;
     ssl_certificate_key /certs/certificates/${CERT_DOMAIN}.key;
+    # Link previews only follow a full address for the card's image, so the path in the
+    # page becomes one for this name.
+    sub_filter 'content="/og.jpg"' 'content="https://${CERT_DOMAIN}/og.jpg"';
+    sub_filter_once off;
     include /etc/nginx/card.locations;
 }

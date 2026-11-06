@@ -421,6 +421,10 @@ Pi's home address, set `CERT_DOMAIN`, `SPACESHIP_API_KEY` and `SPACESHIP_API_SEC
 run `docker compose up -d`. Then restart the receiver and change the Cast app's URL to
 `https://<your domain>/`.
 
+Over https, a link to the page shares with a preview card 🖼️ (`receiver/og.jpg`, drawn from
+`docs/og-card.html`). Previews need the image's full address, which nginx fills in from
+`CERT_DOMAIN`.
+
 </details>
 
 <details>

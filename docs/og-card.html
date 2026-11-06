@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- The link preview card, receiver/og.jpg: the plane screenshot with a line about what
+     Sky Above does. To redraw it, render this page at 1200x630 and save it as a JPEG:
+       chrome --headless=new --hide-scrollbars --force-device-scale-factor=1 \
+         --window-size=1200,630 --screenshot=og.png docs/og-card.html
+       sips -s format jpeg -s formatOptions 85 og.png --out receiver/og.jpg -->
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    position: relative;
+    background: linear-gradient(160deg, #0b1a33 0%, #10284d 100%);
+    font-family: "Google Sans", Roboto, system-ui, sans-serif;
+    color: #f4f7fb;
+  }
+  .words {
+    position: absolute; left: 68px; top: 0; bottom: 0; width: 430px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .eyebrow {
+    color: #ffb347; font-weight: 700; font-size: 26px;
+    letter-spacing: 0.18em; text-transform: uppercase; margin: 0 0 22px;
+  }
+  h1 { font-size: 66px; line-height: 1.04; margin: 0 0 26px; font-weight: 800; letter-spacing: -0.01em; }
+  .sub { color: #9fb3cf; font-size: 27px; line-height: 1.35; margin: 0; }
+  .shot {
+    position: absolute; left: 548px; top: 104px; width: 720px; border-radius: 26px;
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(255, 255, 255, 0.12);
+  }
+  .ring {
+    position: absolute; left: 470px; top: -170px; width: 560px; height: 560px;
+    border-radius: 50%; border: 3px dashed rgba(255, 179, 71, 0.28);
+  }
+</style>
+</head>
+<body>
+  <div class="ring"></div>
+  <img class="shot" src="screenshots/plane.jpg" alt="">
+  <div class="words">
+    <p class="eyebrow">✈️ Sky Above</p>
+    <h1>What's that plane overhead?</h1>
+    <p class="sub">Your TV or smart display shows who it is and where it's going, and says it out loud.</p>
+  </div>
+</body>
+</html>
