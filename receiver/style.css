@@ -193,3 +193,57 @@ html, body {
 .stats dd { font-size: 12vh; font-weight: 800; line-height: 1.05; white-space: nowrap; }
 .stats dd small { font-size: 5.5vh; color: var(--muted); font-weight: 600; margin-left: 0.5vw; }
 .stats dd .imperial { display: block; font-size: 5.5vh; color: var(--muted); font-weight: 600; }
+
+/* A phone held upright, for looking at the card from another room. The Hub is always
+   landscape, so none of this reaches it. The card stacks instead of sitting side by
+   side, the page scrolls if it has to, and sizes follow the width rather than the
+   height, which on a phone is far greater. */
+@media (orientation: portrait) {
+  html, body { height: auto; min-height: 100%; overflow-x: hidden; overflow-y: auto; }
+  #screen { height: auto; min-height: 100vh; min-height: 100dvh; padding: 6vw 5vw; }
+  #screen.emergency::before,
+  #screen.service-ambulance::before,
+  #screen.service-police::before { height: 2vw; }
+  #screen.service-ambulance::before,
+  #screen.service-police::before { background-size: 4vw 2vw; }
+  #screen.emergency::before { background: repeating-linear-gradient(-45deg, var(--emergency) 0 2vw, #fff 0 4vw); }
+
+  .eyebrow { font-size: 3.6vw; }
+  .waiting-note { font-size: 8vw; }
+  .waiting-note .eyebrow { font-size: 5vw; margin-bottom: 3vw; }
+
+  .card { height: auto; justify-content: flex-start; }
+  .top { grid-template-columns: minmax(0, 1fr); gap: 5vw; margin-bottom: 6vw; }
+  .words { gap: 1.5vw; }
+  .map { aspect-ratio: 1; border-radius: 4vw; }
+  .map::after { font-size: 2.6vw; right: 2vw; bottom: 1vw; }
+  .map-home { width: 4.5vw; height: 4.5vw; border-width: 1.2vw; box-shadow: 0 0 0 0.6vw rgba(0, 0, 0, 0.4); }
+  .map-airport { font-size: 3.2vw; padding: 0.4vw 1.2vw; border-radius: 1.5vw; border-width: 0.4vw; }
+  .map-plane { width: 9vw; height: 9vw; }
+
+  .operator { gap: 3.5vw; margin-bottom: 2vw; }
+  .logo { width: 15vw; height: 15vw; border-radius: 3.5vw; padding: 2.5vw; }
+  .logo.none { font-size: 8vw; }
+  .airline { font-size: 7.5vw; }
+  .flight { font-size: 17vw; }
+  .route { font-size: 7.5vw; }
+  .aircraft { font-size: 5vw; }
+  .note { font-size: 4.5vw; }
+  #screen.followed .flight,
+  #screen.emergency .flight { font-size: 14vw; }
+  #screen.followed .route,
+  #screen.emergency .route { font-size: 7vw; }
+  #screen.followed .aircraft,
+  #screen.emergency .aircraft { font-size: 4.5vw; }
+
+  /* A label can wrap onto a second line here, so the labels share one row and the
+     figures the next, keeping the figures in line whatever the labels do. */
+  .stats { column-gap: 3vw; row-gap: 0; grid-template-rows: auto auto; }
+  .stats div { display: grid; grid-row: span 2; grid-template-rows: subgrid; }
+  .stats dt { font-size: 3.2vw; align-self: end; }
+  .stats dd { font-size: 8.5vw; }
+  /* A followed flight's figures run longer, such as "2hrs 14mins". */
+  #screen.followed .stats dd { font-size: 6.5vw; }
+  .stats dd small { font-size: 4vw; margin-left: 0.5vw; }
+  .stats dd .imperial { font-size: 3.6vw; }
+}

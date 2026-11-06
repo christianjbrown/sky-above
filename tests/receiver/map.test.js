@@ -156,6 +156,24 @@ describe("drawing the nearest plane", () => {
     expect(map.sources.trail.data.geometry.coordinates).toEqual([[0.01, 51.48]]);
   });
 
+  it("starts afresh with the same plane once it has been forgotten", () => {
+    const { flightMap, map } = readyMap();
+    flightMap.show(planeMessage({ lon: 0.02 }));
+    flightMap.forget();
+    flightMap.show(planeMessage({ lon: 0.01 }));
+    expect(map.sources.trail.data.geometry.coordinates).toEqual([[0.01, 51.48]]);
+    expect(map.eased[2].duration).toBe(0);
+  });
+
+  it("drops an update that was waiting for the style once forgotten", () => {
+    const flightMap = new window.FlightMap(container);
+    flightMap.show(planeMessage());
+    flightMap.forget();
+    const map = fakes.maps[0];
+    map.finishLoading();
+    expect(map.eased).toEqual([]);
+  });
+
   it("jumps to a new plane but glides between updates of the same one", () => {
     const { flightMap, map } = readyMap();
     expect(map.eased[0].duration).toBe(0);

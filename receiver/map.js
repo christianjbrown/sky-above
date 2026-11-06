@@ -142,6 +142,13 @@
     this._draw(message, plane);
   };
 
+  // Once the sky is clear, so whichever plane comes next, even the same one back
+  // again, starts a fresh trail with the camera jumping to it.
+  FlightMap.prototype.forget = function () {
+    this._hex = null;
+    this._pending = null;
+  };
+
   FlightMap.prototype._start = function (message) {
     var self = this;
     try {
@@ -196,8 +203,9 @@
           paint: { "line-color": "#ffb347", "line-width": 4, "line-opacity": 0.8, "line-dasharray": [0, 2] }
         });
         self._ready = true;
-        // show() always holds the message that started the map until it is ready.
-        self._draw(self._pending, self._pending.planes[0]);
+        // show() holds the latest message until the map is ready, unless the sky
+        // cleared meanwhile.
+        if (self._pending) { self._draw(self._pending, self._pending.planes[0]); }
       });
       this._map.on("error", function (event) { console.warn("map:", event.error && event.error.message); });
     } catch (error) {
