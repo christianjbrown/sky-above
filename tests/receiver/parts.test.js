@@ -95,9 +95,16 @@ describe("showRoute", () => {
 
   it("shows only the destination when the origin is unknown", () => {
     parts.setHomeCountry("GB");
-    parts.showRoute({ city: "No code" }, heathrow);
+    parts.showRoute({}, heathrow);
     expect(parts.byId("route-from").textContent).toBe("");
     expect(parts.byId("route-to").textContent).toBe("→London (LHR)");
+  });
+
+  it("names a place with no airport code by its name alone", () => {
+    parts.setHomeCountry("GB");
+    parts.showRoute({ code: null, city: "Toulon", country: "FR" }, null);
+    expect(parts.byId("route-from").textContent).toBe("From \u{1F1EB}\u{1F1F7} Toulon");
+    expect(parts.byId("route-from").querySelector("b")).toBeNull();
   });
 
   it("hides the route when neither end is known", () => {

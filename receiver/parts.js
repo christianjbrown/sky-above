@@ -31,10 +31,13 @@
     return end.city || end.name || end.code || "";
   }
 
+  // A place with no airport code, such as an airfield FlightAware only knows by its
+  // position, goes by its name alone.
   function airport(end) {
+    var city = placeName(end);
+    if (!end.code) { return [document.createTextNode(flag(end.country) + city)]; }
     var code = document.createElement("b");
     code.textContent = end.code;
-    var city = placeName(end);
     if (!city || city === end.code) { return [document.createTextNode(flag(end.country)), code]; }
     return [document.createTextNode(flag(end.country) + city + " ("), code, document.createTextNode(")")];
   }
@@ -47,8 +50,8 @@
   // Flights off the timetable, such as an empty plane being moved, often come with
   // only one end known, so each line shows whichever end there is.
   function showRoute(origin, destination) {
-    var from = origin && origin.code ? origin : null;
-    var to = destination && destination.code ? destination : null;
+    var from = placeName(origin) ? origin : null;
+    var to = placeName(destination) ? destination : null;
     byId("route").classList.toggle("none", !from && !to);
     var arrow = document.createElement("span");
     arrow.className = "arrow";

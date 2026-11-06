@@ -5,7 +5,7 @@ import pytest
 from fakes import FakeClock, FakeHttp, http_error
 from flights_watcher.budget import BudgetedHttp, BudgetSpent, MonthlyBudget
 from flights_watcher.caching import CachedOperatorNames, TtlCache
-from flights_watcher.flightaware import AeroApiOperatorNames, AeroApiRouteLookup
+from flights_watcher.flightaware import AeroApiOperatorNames, AeroApiRouteLookup, aeroapi_airport
 from flights_watcher.lookups import Airport, LookupFailed, Route
 
 BASE = "https://aeroapi.test/aeroapi"
@@ -110,3 +110,10 @@ def test_a_flight_without_airports_still_gives_its_number():
     route = lookup({FLIGHTS_URL: {"flights": [flight]}, OPERATOR_URL: {"name": "Eurowings"}})[0].route("EWG6U")
     assert route.flight_number == "EW8461"
     assert route.origin is None and route.destination is None
+
+
+def test_a_place_named_by_its_position_has_no_code_but_keeps_where_it_is():
+    airport = aeroapi_airport({"code": "L 43.12092 6.20335", "code_icao": None, "code_iata": None, "name": None, "city": "Toulon"})
+    assert airport == Airport(code=None, name=None, city="Toulon", lat=43.12092, lon=6.20335)
+    west = aeroapi_airport({"code": "L 51.5 -1", "city": "Somewhere"})
+    assert west is not None and (west.lat, west.lon) == (51.5, -1.0)
