@@ -5,6 +5,7 @@ import pytest
 from fakes import HOME, FakeClock, plane
 from flights_watcher.aircraft import Aircraft
 from flights_watcher.emergency import (
+    AltitudeBearsOut,
     DeclaredEmergency,
     Distress,
     Emergency,
@@ -73,6 +74,27 @@ def test_a_steep_climb_or_descent_counts_for_airliners_only():
     assert steep.of(plane(vertical_rate_fpm=-9000, military=True)) is None
     assert steep.of(plane(vertical_rate_fpm=-9000, category="A7")) is None
     assert steep.of(plane(vertical_rate_fpm=12000, category="A6")) is None
+
+
+def test_a_steep_rate_only_counts_while_the_altitude_moves_that_way():
+    clock = FakeClock()
+    steep = AltitudeBearsOut(SteepClimbOrDescent(descent_fpm=6000, climb_fpm=8000), clock, 0.5)
+    # Diving at 6400 ft a minute: half of that over 6 seconds is 320 ft.
+    assert steep.of(plane(altitude_ft=20000, vertical_rate_fpm=-6400)) is None
+    clock.seconds = 6
+    assert steep.of(plane(altitude_ft=19700, vertical_rate_fpm=-6400)) is None
+    assert steep.of(plane(altitude_ft=19600, vertical_rate_fpm=-6400)) == Emergency("descent")
+    # Coming in to land while the transponder reports a steep climb.
+    assert steep.of(plane("inbound", altitude_ft=8500, vertical_rate_fpm=8200)) is None
+    clock.seconds = 60
+    assert steep.of(plane("inbound", altitude_ft=7900, vertical_rate_fpm=8200)) is None
+    # A plane that stops being steep, or turns the other way, starts the count again.
+    assert steep.of(plane(altitude_ft=15000, vertical_rate_fpm=-1000)) is None
+    assert steep.of(plane(altitude_ft=15000, vertical_rate_fpm=-6400)) is None
+    clock.seconds = 66
+    assert steep.of(plane(altitude_ft=14500, vertical_rate_fpm=-6400)) == Emergency("descent")
+    assert steep.of(plane(altitude_ft=14500, vertical_rate_fpm=9000)) is None
+    assert steep.of(plane(altitude_ft=None, vertical_rate_fpm=-6400)) is None
 
 
 def held(clock: FakeClock, polls: int = 3, clear: float = 60) -> HeldEmergencies:

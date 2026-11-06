@@ -20,6 +20,7 @@ from flights_watcher.clock import Clock
 from flights_watcher.config import Settings
 from flights_watcher.display import CastDevice, CastDisplay, CoolingOffDevice, Display, FanOutDisplay, LoggingDisplay, Stamped
 from flights_watcher.emergency import (
+    AltitudeBearsOut,
     DeclaredEmergency,
     EmergencyAlert,
     EmergencyLog,
@@ -277,6 +278,9 @@ STEEP_HELD_POLLS = 10
 EMERGENCY_CLEAR_SECONDS = 60
 STEEP_DESCENT_FPM = 6000
 STEEP_CLIMB_FPM = 8000
+# A steep rate only counts while the altitude has moved at least this share of what the
+# rate says it should have.
+STEEP_ALTITUDE_SHARE = 0.5
 EMERGENCIES_ANNOUNCED_REMEMBERED = 20
 # An air ambulance, police or military aircraft that comes into the zone keeps the card until it is
 # further than this from home.
@@ -539,7 +543,7 @@ def watcher_for(
         [
             HeldEmergencies(DeclaredEmergency(), settings.home, EMERGENCY_HELD_POLLS, EMERGENCY_CLEAR_SECONDS, clock),
             HeldEmergencies(
-                SteepClimbOrDescent(STEEP_DESCENT_FPM, STEEP_CLIMB_FPM),
+                AltitudeBearsOut(SteepClimbOrDescent(STEEP_DESCENT_FPM, STEEP_CLIMB_FPM), clock, STEEP_ALTITUDE_SHARE),
                 settings.home,
                 STEEP_HELD_POLLS,
                 EMERGENCY_CLEAR_SECONDS,

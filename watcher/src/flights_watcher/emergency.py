@@ -85,6 +85,35 @@ class SteepClimbOrDescent:
         return Emergency("climb") if rate >= self._climb_fpm else None
 
 
+class AltitudeBearsOut:
+    """A climb or descent only counts while the altitude is moving that way, by at least
+    share of what the reported rate says it should have since the rate first went steep.
+    A transponder can report a steep rate that is simply wrong: one coming in to land
+    has been seen reporting a climb of over 8000 ft a minute for minutes on end while it
+    came down 1500 ft."""
+
+    def __init__(self, reader: EmergencyReader, clock: Clock, share: float) -> None:
+        self._reader = reader
+        self._clock = clock
+        self._share = share
+        # When each plane's rate went steep, which way, and how high it was then.
+        self._started: dict[str, tuple[str, float, int]] = {}
+
+    def of(self, plane: Aircraft) -> Emergency | None:
+        emergency = self._reader.of(plane)
+        if emergency is None or plane.altitude_ft is None or plane.vertical_rate_fpm is None:
+            self._started.pop(plane.hex, None)
+            return None
+        now = self._clock.monotonic()
+        kind, since, altitude = self._started.get(plane.hex, (None, now, plane.altitude_ft))
+        if kind != emergency.kind:
+            since, altitude = now, plane.altitude_ft
+            self._started[plane.hex] = (emergency.kind, since, altitude)
+        expected = plane.vertical_rate_fpm * (now - since) / 60 * self._share
+        moved = plane.altitude_ft - altitude
+        return emergency if expected and moved / expected >= 1 else None
+
+
 class Emergencies(Protocol):
     def current(self, aircraft: Sequence[Aircraft]) -> list[Distress]: ...
 
