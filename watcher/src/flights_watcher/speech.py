@@ -251,6 +251,27 @@ class SaidAsWords:
         return self._inner.synthesize(text)
 
 
+class AirbusNumbersSaid:
+    """Piper reads an Airbus type the way it reads any number, "A three hundred and
+    twenty", where everyone who flies them says "A three twenty": the first digit, then
+    the other two as one number, or "hundred" for the A300. The variant after it, such as
+    the 1000 in A350-1000 or the neo in A320neo, follows as a word of its own, instead of
+    after a minus or run into the number."""
+
+    _TYPE = re.compile(r"\bA(\d)(\d\d)(?:-(\d+))?([a-z]*)\b")
+
+    def __init__(self, inner: SpeechSynthesizer) -> None:
+        self._inner = inner
+
+    def synthesize(self, text: str) -> bytes:
+        return self._inner.synthesize(self._TYPE.sub(_said_airbus, text))
+
+
+def _said_airbus(match: re.Match[str]) -> str:
+    first, rest, *after = match.groups()
+    return " ".join(["A", first, "hundred" if rest == "00" else rest, *(part for part in after if part)])
+
+
 class SpeechClips:
     """Keeps one WAV per sentence in a folder the receiver serves, named by a hash of the
     words, so a repeated announcement is not synthesised twice. Only the newest few are kept."""

@@ -13,6 +13,7 @@ from flights_watcher.heard import SpeechTiming, ahead
 from flights_watcher.rare import RareKinds
 from flights_watcher.schedule import QuietHours
 from flights_watcher.speech import (
+    AirbusNumbersSaid,
     AnnouncementWording,
     Announcer,
     EndOfShowing,
@@ -386,3 +387,16 @@ def test_with_no_words_to_change_the_text_goes_through_as_it_is():
     heard = HeardSynth()
     SaidAsWords(heard, {}).synthesize("Boeing 737 MAX 8")
     assert heard.texts == ["Boeing 737 MAX 8"]
+
+
+def test_an_airbus_type_is_said_the_way_people_who_fly_them_say_it():
+    heard = HeardSynth()
+    voice = AirbusNumbersSaid(heard)
+    assert voice.synthesize("E Z Y, Airbus A320neo, from Geneva.") == b"wav"
+    voice.synthesize("Airbus A350-1000, Airbus A220-300, Airbus A300, Airbus A321neo")
+    voice.synthesize("Boeing 737 MAX 8, A3200, BA320")
+    assert heard.texts == [
+        "E Z Y, Airbus A 3 20 neo, from Geneva.",
+        "Airbus A 3 50 1000, Airbus A 2 20 300, Airbus A 3 hundred, Airbus A 3 21 neo",
+        "Boeing 737 MAX 8, A3200, BA320",
+    ]
