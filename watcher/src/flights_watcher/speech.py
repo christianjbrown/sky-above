@@ -272,6 +272,25 @@ def _said_airbus(match: re.Match[str]) -> str:
     return " ".join(["A", first, "hundred" if rest == "00" else rest, *(part for part in after if part)])
 
 
+class BoeingNumbersSaid:
+    """Piper reads a Boeing type as a number, "seven hundred and eighty seven", where
+    everyone says it a digit at a time: "seven eight seven". The variant after it, such
+    as the 9 in 787-9, follows as a word of its own instead of after a minus."""
+
+    _TYPE = re.compile(r"\b7(\d)7(?:-(\w+))?\b")
+
+    def __init__(self, inner: SpeechSynthesizer) -> None:
+        self._inner = inner
+
+    def synthesize(self, text: str) -> bytes:
+        return self._inner.synthesize(self._TYPE.sub(_said_boeing, text))
+
+
+def _said_boeing(match: re.Match[str]) -> str:
+    middle, variant = match.groups()
+    return " ".join(["7", middle, "7", *([variant] if variant else [])])
+
+
 class SpeechClips:
     """Keeps one WAV per sentence in a folder the receiver serves, named by a hash of the
     words, so a repeated announcement is not synthesised twice. Only the newest few are kept."""

@@ -113,6 +113,7 @@ from flights_watcher.speech import (
     AirbusNumbersSaid,
     AnnouncementWording,
     Announcer,
+    BoeingNumbersSaid,
     EndOfShowing,
     InterruptedByEmergency,
     QuietVoice,
@@ -399,7 +400,7 @@ def voices(settings: Settings, clock: Clock, rare: RareKinds, logger: logging.Lo
         pathlib.Path(settings.speech_dir),
         SPEECH_URL_PREFIX,
         SPEECH_CLIPS_KEPT,
-        SaidAsWords(AirbusNumbersSaid(WyomingSpeech(host, port, SPEECH_TIMEOUT_SECONDS)), SAID_AS_WORDS),
+        SaidAsWords(BoeingNumbersSaid(AirbusNumbersSaid(WyomingSpeech(host, port, SPEECH_TIMEOUT_SECONDS))), SAID_AS_WORDS),
     )
     wording = AnnouncementWording(NAMED_AIRPORTS, SpokenWhereabouts(settings.home))
     announcer = Announcer(
