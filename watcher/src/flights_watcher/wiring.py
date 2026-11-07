@@ -305,9 +305,9 @@ EMERGENCIES_ANNOUNCED_REMEMBERED = 20
 # further than this from home.
 SERVICES_KEPT = ("ambulance", "police", "military")
 SERVICE_HOLD_KM = 5
-# Words in aircraft names written in capitals but said as words, and how to write them
-# so the voice says them that way.
-SAID_AS_WORDS = {"MAX": "Max"}
+# Words in aircraft names the voice gets wrong, and how to write them so it says them
+# right: MAX is said as a word, not spelled out, and ERJ is spelled out, not said as one.
+SAID_AS_WORDS = {"MAX": "Max", "ERJ": "E R J"}
 # Where nginx serves the clip folder, relative to the receiver page.
 SPEECH_URL_PREFIX = "speech/"
 

@@ -128,3 +128,7 @@ def test_json_is_fetched_over_http_and_only_http():
             http.get_json("file:///etc/passwd")
     finally:
         server.stop()
+
+
+def test_aircraft_names_are_written_the_way_they_are_said():
+    assert wiring.SAID_AS_WORDS == {"MAX": "Max", "ERJ": "E R J"}
