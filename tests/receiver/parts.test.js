@@ -159,6 +159,13 @@ describe("showLogo", () => {
     expect(document.querySelector(".logo").classList.contains("portrait")).toBe(false);
   });
 
+  it("shows a picture kept on the Pi whole, like a logo", () => {
+    parts.showLogo(null, false, "portraits/a-football-club.png");
+    expect(parts.byId("logo").getAttribute("src")).toBe("portraits/a-football-club.png");
+    expect(document.querySelector(".logo").classList.contains("portrait")).toBe(false);
+    expect(document.querySelector(".logo").classList.contains("none")).toBe(false);
+  });
+
   it("brings the tile back for the next airline after one without a logo", () => {
     parts.showLogo("ZZZ", false);
     parts.byId("logo").onerror();

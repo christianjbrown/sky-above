@@ -265,8 +265,8 @@ under fair use, so Sky Above won't fetch them. You can still use them at home: d
 `own-portraits/` next to `docker-compose.yml` on the Pi, named after the owner in lower case with
 hyphens for spaces and punctuation, like `a-football-club.png`. Where you've given a Wikipedia
 article after a `|`, name it after that instead (`charles-iii.jpg`). JPG, PNG, WebP and SVG all work.
-A picture here wins over Wikipedia's, the next card picks it up, and it's gitignored too, like
-`own-logos/`.
+A picture here wins over Wikipedia's and sits whole on white, like an airline logo. The next card
+picks it up, and it's gitignored too, like `own-logos/`.
 
 ## Good to know
 
