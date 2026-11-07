@@ -111,7 +111,7 @@ from flights_watcher.paths import (
     PathFinder,
     PathRecorder,
 )
-from flights_watcher.portraits import CachedPortraits, NoPortraits, PortraitLookup, WikipediaPortraits
+from flights_watcher.portraits import CachedPortraits, FirstPortrait, LocalPortraits, PortraitLookup, WikipediaPortraits
 from flights_watcher.presence import Linger, MinimumShowing
 from flights_watcher.priority import ServicesStay
 from flights_watcher.rare import RareKinds
@@ -373,15 +373,23 @@ def notables(settings: Settings, tuning: Tuning, clock: Clock, logger: logging.L
     )
 
 
+# Where the receiver serves the Pi's own owner pictures, relative to the page. It has to
+# match the receiver's /portraits/ location, so it is not a tuning.
+OWN_PORTRAITS_URL = "portraits/"
+
+
 def portraits(settings: Settings, tuning: Tuning, http: JsonHttp, clock: Clock, logger: logging.Logger) -> PortraitLookup:
-    """Pictures of who notable aircraft belong to, from Wikipedia, asked about only when
-    one gets a card."""
-    if not settings.portrait_api_url:
-        return NoPortraits()
-    cache: TtlCache[str | None] = TtlCache(
-        clock, tuning.portrait_cache_seconds, tuning.portrait_cache_entries, tuning.portrait_retry_seconds
-    )
-    return CachedPortraits(WikipediaPortraits(settings.portrait_api_url, http), cache, logger)
+    """Pictures of who notable aircraft belong to: the Pi's own first, then Wikipedia's,
+    asked about only when one gets a card."""
+    places: list[PortraitLookup] = []
+    if settings.own_portraits_dir:
+        places.append(LocalPortraits(pathlib.Path(settings.own_portraits_dir), OWN_PORTRAITS_URL))
+    if settings.portrait_api_url:
+        cache: TtlCache[str | None] = TtlCache(
+            clock, tuning.portrait_cache_seconds, tuning.portrait_cache_entries, tuning.portrait_retry_seconds
+        )
+        places.append(CachedPortraits(WikipediaPortraits(settings.portrait_api_url, http), cache, logger))
+    return FirstPortrait(places)
 
 
 def watcher_for(

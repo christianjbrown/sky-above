@@ -1,6 +1,9 @@
 """A picture of who a notable aircraft belongs to, for its card."""
 
 import logging
+import pathlib
+import re
+from collections.abc import Sequence
 from typing import Protocol
 from urllib.error import HTTPError
 from urllib.parse import quote
@@ -19,11 +22,6 @@ class PortraitLookup(Protocol):
         """The web address of a picture of the article's subject, or None when it has none.
         Raises LookupFailed."""
         ...
-
-
-class NoPortraits:
-    def portrait(self, article: str) -> str | None:
-        return None
 
 
 class WikipediaPortraits:
@@ -49,6 +47,37 @@ class WikipediaPortraits:
             return None
         source = (page.get("thumbnail") or {}).get("source")
         return source if isinstance(source, str) and _FREE_PICTURES in source else None
+
+
+class LocalPortraits:
+    """Pictures kept on the Pi, for owners whose only picture online is a logo or crest
+    that may be shown at home but not handed out. Each is named after the owner, lower
+    case with hyphens between the words: leicester-city-football-club.png."""
+
+    _KINDS = (".jpg", ".jpeg", ".png", ".webp", ".svg")
+
+    def __init__(self, folder: pathlib.Path, url_prefix: str) -> None:
+        self._folder = folder
+        self._url_prefix = url_prefix
+
+    def portrait(self, article: str) -> str | None:
+        name = file_name(article)
+        return next((self._url_prefix + name + kind for kind in self._KINDS if (self._folder / (name + kind)).is_file()), None)
+
+
+def file_name(owner: str) -> str:
+    """The name an owner's picture is kept under: "A Football Club" is a-football-club."""
+    return re.sub(r"[^a-z0-9]+", "-", owner.lower()).strip("-")
+
+
+class FirstPortrait:
+    """The first of several places that has a picture."""
+
+    def __init__(self, places: Sequence[PortraitLookup]) -> None:
+        self._places = places
+
+    def portrait(self, article: str) -> str | None:
+        return next((found for place in self._places if (found := place.portrait(article))), None)
 
 
 class CachedPortraits:

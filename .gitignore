@@ -6,6 +6,8 @@ __pycache__/
 map/
 # Logos that may be used at home but not shared, see the README.
 own-logos/
+# Owners' pictures that may be used at home but not shared, see the README.
+own-portraits/
 # Our own and family flights, which say when the house is empty.
 followed/
 # Who notable aircraft belong to, kept by hand on the Pi.

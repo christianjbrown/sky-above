@@ -5,7 +5,7 @@ import pytest
 from fakes import FakeClock, FakeHttp, http_error
 from flights_watcher.caching import TtlCache
 from flights_watcher.lookups import LookupFailed
-from flights_watcher.portraits import CachedPortraits, NoPortraits, WikipediaPortraits
+from flights_watcher.portraits import CachedPortraits, FirstPortrait, LocalPortraits, WikipediaPortraits, file_name
 
 BASE = "https://wiki.example/api/rest_v1/"
 FREE = "https://upload.example/wikipedia/commons/thumb/a/ab/A_Pop_Star.jpg/330px-A_Pop_Star.jpg"
@@ -38,7 +38,6 @@ def test_the_portrait_is_the_free_lead_picture_of_their_article():
     assert portraits.portrait("Strange") is None
     assert portraits.portrait("Nobody") is None
     missing.close()
-    assert NoPortraits().portrait("A Pop Star") is None
 
 
 def test_a_service_that_cannot_be_asked_is_a_failed_lookup():
@@ -71,3 +70,29 @@ def test_portraits_are_asked_for_once_and_failures_count_as_none_for_a_while(cap
     clock.seconds = 61
     cached.portrait("Down")
     assert inner.asked == ["A Pop Star", "Down", "Down"]
+
+
+def test_pictures_kept_on_the_pi_are_found_by_the_owner_s_name(tmp_path):
+    (tmp_path / "a-football-club.png").write_bytes(b"png")
+    (tmp_path / "a-king-monarch.svg").write_text("<svg/>")
+    (tmp_path / "a-pop-star.gif").write_bytes(b"gif")
+    local = LocalPortraits(tmp_path, "portraits/")
+    assert local.portrait("A Football Club") == "portraits/a-football-club.png"
+    assert local.portrait("A King (monarch)") == "portraits/a-king-monarch.svg"
+    assert local.portrait("A Pop Star") is None
+    assert file_name("  Leicester City F.C. ") == "leicester-city-f-c"
+
+
+def test_the_first_place_with_a_picture_wins():
+    class Fixed:
+        def __init__(self, answers):
+            self.answers = answers
+
+        def portrait(self, article):
+            return self.answers.get(article)
+
+    first = FirstPortrait([Fixed({"A Football Club": "portraits/club.png"}), Fixed({"A Football Club": FREE, "A Pop Star": FREE})])
+    assert first.portrait("A Football Club") == "portraits/club.png"
+    assert first.portrait("A Pop Star") == FREE
+    assert first.portrait("Nobody") is None
+    assert FirstPortrait([]).portrait("A Pop Star") is None
