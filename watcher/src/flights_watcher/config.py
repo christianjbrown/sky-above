@@ -26,7 +26,8 @@ REQUIRED_KEYS = (
 # no photo service (cards show a plane symbol), no live card for browsers, no spoken announcements,
 # a voice that speaks at any hour, routes from adsbdb rather than FlightAware, a cast
 # chime left audible (MUTE_CHIME takes true or false), no followed flights, and no air
-# ambulance or police callsigns to pick out.
+# ambulance or police callsigns to pick out. AEROAPI_PRICES and AEROAPI_UNLISTED_PRICE
+# may only be empty without an AEROAPI_KEY, since a key spends money they count.
 OPTIONAL_KEYS = (
     "QUIET_HOURS",
     "CAST_APP_ID",
@@ -39,6 +40,8 @@ OPTIONAL_KEYS = (
     "AEROAPI_KEY",
     "AEROAPI_URL",
     "AEROAPI_MONTHLY_DOLLARS",
+    "AEROAPI_PRICES",
+    "AEROAPI_UNLISTED_PRICE",
     "STATE_DIR",
     "MUTE_CHIME",
     "FOLLOWED_FILE",
@@ -82,6 +85,10 @@ class Settings:
     # Dollars a month on AeroAPI, for planes overhead and for followed flights. Each
     # lookup past the free credit is charged, so the two are best kept inside it together.
     aeroapi_monthly_dollars: Decimal
+    # What AeroAPI charges for one request to each path below aeroapi_url, where * is any
+    # one part of the path, and for a request to anywhere else.
+    aeroapi_prices: tuple[tuple[str, Decimal], ...]
+    aeroapi_unlisted_price: Decimal
     state_dir: str
     mute_chime: bool
     followed_file: str
@@ -109,7 +116,7 @@ class Settings:
         if missing:
             raise ConfigError(f"missing settings: {', '.join(missing)}")
         try:
-            return cls(
+            settings = cls(
                 aircraft_url=env["AIRCRAFT_URL"],
                 home=Location(float(env["HOME_LAT"]), float(env["HOME_LON"])),
                 radius_km=float(env["ZONE_RADIUS_KM"]),
@@ -131,6 +138,8 @@ class Settings:
                 aeroapi_key=env.get("AEROAPI_KEY", "").strip(),
                 aeroapi_url=env.get("AEROAPI_URL", "").strip(),
                 aeroapi_monthly_dollars=_dollars("AEROAPI_MONTHLY_DOLLARS", env.get("AEROAPI_MONTHLY_DOLLARS", "")),
+                aeroapi_prices=_prices(env.get("AEROAPI_PRICES", "")),
+                aeroapi_unlisted_price=_dollars("AEROAPI_UNLISTED_PRICE", env.get("AEROAPI_UNLISTED_PRICE", "")),
                 state_dir=env.get("STATE_DIR", "").strip(),
                 mute_chime=_switch("MUTE_CHIME", env.get("MUTE_CHIME", "")),
                 followed_file=env.get("FOLLOWED_FILE", "").strip(),
@@ -145,8 +154,11 @@ class Settings:
                 notable_categories=tuple(name.strip() for name in env.get("NOTABLE_CATEGORIES", "").split(",") if name.strip()),
                 notable_names_file=env.get("NOTABLE_NAMES_FILE", "").strip(),
             )
+            if settings.aeroapi_key and not (settings.aeroapi_prices and env.get("AEROAPI_UNLISTED_PRICE", "").strip()):
+                raise ValueError("an AEROAPI_KEY needs AEROAPI_PRICES and AEROAPI_UNLISTED_PRICE to count what it spends")
         except ValueError as error:
             raise ConfigError(f"bad setting: {error}") from error
+        return settings
 
 
 def _switch(name: str, value: str) -> bool:
@@ -166,6 +178,19 @@ def _dollars(name: str, value: str) -> Decimal:
     if not amount.is_finite() or amount < 0:
         raise ValueError(f"{name} should be an amount of dollars, not {value!r}")
     return amount
+
+
+def _prices(value: str) -> tuple[tuple[str, Decimal], ...]:
+    """Comma separated path=dollars pairs: "flights/*=0.005, operators/*=0.015"."""
+    prices: list[tuple[str, Decimal]] = []
+    for item in (part.strip() for part in value.split(",")):
+        if not item:
+            continue
+        path, equals, amount = item.partition("=")
+        if not equals or not path.strip(" /"):
+            raise ValueError(f"AEROAPI_PRICES takes path=dollars pairs, not {item!r}")
+        prices.append((path.strip(" /"), _dollars("AEROAPI_PRICES", amount)))
+    return tuple(prices)
 
 
 def _hours(name: str, value: str) -> str:

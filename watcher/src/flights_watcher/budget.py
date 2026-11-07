@@ -27,12 +27,13 @@ class Pricing(Protocol):
 
 
 class PricedByPath:
-    """Prices from a list of patterns for the whole path below a service's base address,
-    the first match winning, and a fallback for anything the list does not name."""
+    """Prices for paths below a service's base address, such as flights/*/position, where
+    * stands for any one part of the path. A path has to match all the way to its end, the
+    first match wins, and the fallback prices anything the list does not name."""
 
     def __init__(self, base_url: str, prices: Sequence[tuple[str, Decimal]], fallback: Decimal) -> None:
         self._base_path = urlsplit(base_url).path.rstrip("/")
-        self._prices = [(re.compile(pattern), price) for pattern, price in prices]
+        self._prices = [(_whole_path(path), price) for path, price in prices]
         self._fallback = fallback
 
     def price(self, url: str) -> Decimal:
@@ -41,6 +42,11 @@ class PricedByPath:
             return self._fallback
         below = path.removeprefix(self._base_path)
         return next((price for pattern, price in self._prices if pattern.fullmatch(below)), self._fallback)
+
+
+def _whole_path(path: str) -> re.Pattern[str]:
+    parts = ("[^/]+" if part == "*" else re.escape(part) for part in path.strip("/").split("/"))
+    return re.compile("/" + "/".join(parts))
 
 
 class Budget(Protocol):

@@ -6,25 +6,34 @@ import pytest
 
 from fakes import FakeClock, FakeHttp, http_error
 from flights_watcher.budget import BudgetedHttp, BudgetSpent, MonthlyBudget, PricedByPath
-from flights_watcher.wiring import AEROAPI_PRICES, AEROAPI_UNLISTED_PRICE
 
 BASE = "https://aeroapi.test/aeroapi"
 ROUTE_URL = f"{BASE}/flights/EWG6U?ident_type=designator&max_pages=1"
 OPERATOR_URL = f"{BASE}/operators/EWG"
-AEROAPI = PricedByPath(BASE, AEROAPI_PRICES, AEROAPI_UNLISTED_PRICE)
+PRICES = (
+    ("flights/*/position", Decimal("0.010")),
+    ("flights/*", Decimal("0.005")),
+    ("operators/*", Decimal("0.015")),
+)
+UNLISTED = Decimal("0.200")
+AEROAPI = PricedByPath(BASE, PRICES, UNLISTED)
 
 
 def budgeted(http, limit, path, clock):
     return BudgetedHttp(http, MonthlyBudget(Decimal(limit), path, clock), AEROAPI)
 
 
-def test_each_aeroapi_request_is_priced_at_flightawares_fee():
+def test_each_request_is_priced_by_the_whole_path_below_the_base():
     assert AEROAPI.price(ROUTE_URL) == Decimal("0.005")
     assert AEROAPI.price(f"{BASE}/flights/EWG6U-1762070400-schedule-0001?ident_type=fa_flight_id") == Decimal("0.005")
     assert AEROAPI.price(f"{BASE}/flights/EWG6U-1762070400-schedule-0001/position") == Decimal("0.010")
     assert AEROAPI.price(OPERATOR_URL) == Decimal("0.015")
-    assert AEROAPI.price(f"{BASE}/history/flights/EWG6U") == AEROAPI_UNLISTED_PRICE
-    assert AEROAPI.price("https://aeroapi.test/flights/EWG6U") == AEROAPI_UNLISTED_PRICE
+    assert AEROAPI.price(f"{BASE}/history/flights/EWG6U") == UNLISTED
+    assert AEROAPI.price("https://aeroapi.test/flights/EWG6U") == UNLISTED
+    # Only * stands for anything; the rest of a path is taken as it is written.
+    dotted = PricedByPath(BASE, (("v1.0/*", Decimal("0.001")),), UNLISTED)
+    assert dotted.price(f"{BASE}/v1.0/EWG") == Decimal("0.001")
+    assert dotted.price(f"{BASE}/v1x0/EWG") == UNLISTED
 
 
 def test_the_budget_stops_at_its_dollars_survives_a_restart_and_starts_again_each_month(tmp_path):

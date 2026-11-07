@@ -179,7 +179,8 @@ Without a key, routes come from a free service that's often out of date.
 FlightAware gives you $5 of lookups a month for free, or $10 if you feed them. Sky Above spends at
 most $3 a month on planes overhead and $2 on followed flights, so out of the box it never costs a
 penny. Feeding FlightAware? Raise `AEROAPI_MONTHLY_DOLLARS` and `FOLLOWED_MONTHLY_DOLLARS` to
-make use of the extra $5. 💸
+make use of the extra $5. 💸 It counts each lookup at FlightAware's price, and if they ever
+change their prices, `AEROAPI_PRICES` is where to put the new ones.
 
 ## Following a flight 🧳
 
@@ -280,6 +281,8 @@ most likely to change:
 | `PIPER_VOICE` | Which voice it speaks in | any voice name from the list below | `en_GB-southern_english_female-low` |
 | `AEROAPI_MONTHLY_DOLLARS` | Most it spends on AeroAPI route lookups a month | dollars, like `3` | `3` |
 | `FOLLOWED_MONTHLY_DOLLARS` | Most it spends on followed-flight lookups a month | dollars, like `2` | `2` |
+| `AEROAPI_PRICES` | What FlightAware charges per request, to count the dollars above | `path=dollars` pairs, comma separated, `*` for any one part of the path | `flights/*/position=0.010,flights/*=0.005,operators/*=0.015` |
+| `AEROAPI_UNLISTED_PRICE` | What a request to any other path is counted as | dollars | `0.200` |
 | `LINGER_SECONDS` | How long the card stays after the plane leaves | seconds | `30` |
 | `CARD_MIN_SECONDS` | The shortest time a plane's card is up | seconds | `60` |
 | `AIR_AMBULANCE_CALLSIGNS` | Which planes get the air ambulance look | the code their callsigns start with, like `HLE` in the UK | empty |

@@ -32,6 +32,8 @@ FULL_ENV = {
     "AEROAPI_KEY": "",
     "AEROAPI_URL": "https://aeroapi.flightaware.com/aeroapi",
     "AEROAPI_MONTHLY_DOLLARS": "3",
+    "AEROAPI_PRICES": "flights/*/position=0.010, /flights/*=0.005,operators/*=0.015,",
+    "AEROAPI_UNLISTED_PRICE": "0.200",
     "STATE_DIR": "/var/lib/flights/state",
     "MUTE_CHIME": "true",
     "FOLLOWED_FILE": "/etc/flights/followed/flights.txt",
@@ -61,6 +63,12 @@ def test_settings_read_every_value():
     assert settings.speech_server == ("localhost", 10200)
     assert settings.speech_quiet_hours == "00:00-10:00"
     assert settings.aeroapi_monthly_dollars == Decimal(3)
+    assert settings.aeroapi_prices == (
+        ("flights/*/position", Decimal("0.010")),
+        ("flights/*", Decimal("0.005")),
+        ("operators/*", Decimal("0.015")),
+    )
+    assert settings.aeroapi_unlisted_price == Decimal("0.200")
     assert settings.mute_chime
     assert settings.followed_file == "/etc/flights/followed/flights.txt"
     assert settings.followed_monthly_dollars == Decimal("1.50")
@@ -108,6 +116,31 @@ def test_monthly_dollars_are_amounts_of_money():
     for bad in ("lots", "-1", "NaN", "Infinity"):
         with pytest.raises(ConfigError, match="AEROAPI_MONTHLY_DOLLARS should be an amount of dollars"):
             Settings.from_env({**FULL_ENV, "AEROAPI_MONTHLY_DOLLARS": bad})
+
+
+def test_aeroapi_prices_are_paths_and_dollars():
+    for bad in ("flights/*", "=0.005", "flights/*=lots"):
+        with pytest.raises(ConfigError, match="AEROAPI_PRICES"):
+            Settings.from_env({**FULL_ENV, "AEROAPI_PRICES": bad})
+
+
+def test_an_aeroapi_key_needs_prices_to_count_what_it_spends():
+    unpriced = {**FULL_ENV, "AEROAPI_PRICES": "", "AEROAPI_UNLISTED_PRICE": ""}
+    assert Settings.from_env(unpriced).aeroapi_prices == ()
+    for missing in ("AEROAPI_PRICES", "AEROAPI_UNLISTED_PRICE"):
+        with pytest.raises(ConfigError, match="needs AEROAPI_PRICES and AEROAPI_UNLISTED_PRICE"):
+            Settings.from_env({**FULL_ENV, "AEROAPI_KEY": "test-key", missing: " "})
+
+
+def test_compose_prices_aeroapi_at_flightawares_fees():
+    compose = yaml.safe_load((REPO / "docker-compose.yml").read_text())
+    environment = dict(entry.split("=", 1) for entry in compose["services"]["watcher"]["environment"])
+    defaults = {
+        name: environment[name].removeprefix(f"${{{name}:-").removesuffix("}") for name in ("AEROAPI_PRICES", "AEROAPI_UNLISTED_PRICE")
+    }
+    settings = Settings.from_env({**FULL_ENV, **defaults})
+    assert settings.aeroapi_prices == Settings.from_env(FULL_ENV).aeroapi_prices
+    assert settings.aeroapi_unlisted_price == Decimal("0.200")
 
 
 def test_muting_the_chime_is_a_switch():
