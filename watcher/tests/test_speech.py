@@ -414,3 +414,11 @@ def test_a_boeing_type_is_said_a_digit_at_a_time():
         "Boeing 7 3 7 MAX 8, Boeing 7 7 7 300ER, Boeing 7 4 7",
         "Embraer E175, 7 4 7, 1787, 707A",
     ]
+
+
+def test_a_notable_aircraft_says_who_it_belongs_to():
+    wording = AnnouncementWording(LONDON, NOWHERE)
+    private = {"callsign": "GPOPS", "aircraft": "Dassault Falcon 7X", "owner": "A Pop Star"}
+    assert wording.text(private) == "G P O P S, Dassault Falcon 7X, belonging to A Pop Star."
+    routed = {**CARD, "owner": "A Football Club"}
+    assert wording.text(routed) == "F R, 2 0 S W, from Alicante, to London Stansted, belonging to A Football Club."

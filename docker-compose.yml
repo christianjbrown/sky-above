@@ -120,11 +120,16 @@ services:
       - POLICE_SQUAWKS=${POLICE_SQUAWKS:-}
       - QUIET_HOURS_EXCEPT=${QUIET_HOURS_EXCEPT-helicopters,military}
       - HOME_COUNTRY=${HOME_COUNTRY:-}
+      - NOTABLE_AIRCRAFT_URL=${NOTABLE_AIRCRAFT_URL-https://raw.githubusercontent.com/sdr-enthusiasts/plane-alert-db/main/plane-alert-db.csv}
+      - NOTABLE_CATEGORIES=${NOTABLE_CATEGORIES-Don't you know who I am?,Oligarch,Football,Royal Aircraft}
+      - NOTABLE_NAMES_FILE=/etc/flights/notable/names.txt
     volumes:
       - speech:/var/lib/flights/speech
       - watcher_state:/var/lib/flights/state
       # The flights to follow, in followed/flights.txt next to this file (see the README).
       - ./followed:/etc/flights/followed:ro
+      # Who notable aircraft belong to, in notable/names.txt next to this file (see the README).
+      - ./notable:/etc/flights/notable:ro
 
   # Checks the watcher's /status.json every minute from outside it, and sends an
   # alert to ALERT_URL when it stops looking at the sky, keeps failing, or the

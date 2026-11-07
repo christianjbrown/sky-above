@@ -24,6 +24,7 @@ your TV or smart display shows who it is and where it's headed, and reads it out
 - 🧳 Flights you care about, yours or friends' and family's, followed from four hours before take-off until landing
 - 🚁 Air ambulance and police helicopters in their own colours, where your country gives them their own callsigns or squawks
 - 🪖 Military aircraft in olive, named by who flies them ("Royal Air Force, Airbus A400M Atlas")
+- 🌟 Famous aircraft say who they belong to: a pop star's jet, a football club's 737, the King's helicopter
 - 🚨 Planes in an emergency, anywhere your antenna can hear them: squawking 7700, 7600 or 7500, or
   diving or climbing far faster than any normal flight for most of a minute. They go red, take the screen until it's
   over, and get read out a bit louder
@@ -238,7 +239,14 @@ Each followed flight costs roughly 50 cents to $2 in AeroAPI lookups.
   music and films included, and hands it back once the sky is clear. Anything else casting to the
   same screen just has to wait its turn.
 - 🧪 **Try it without a plane.** Open `http://skyabove.local:8090/?demo` for a made-up one. Also
-  `?demo=followed`, `?demo=taxiing`, `?demo=flying`, `?demo=landed`, `?demo=ambulance`, `?demo=police`, `?demo=military` and `?demo=emergency`.
+  `?demo=followed`, `?demo=taxiing`, `?demo=flying`, `?demo=landed`, `?demo=ambulance`, `?demo=police`, `?demo=military`, `?demo=emergency` and `?demo=notable`.
+- 🌟 **Who's that?** Aircraft on [plane-alert-db](https://github.com/sdr-enthusiasts/plane-alert-db)'s
+  list of celebrities, oligarchs, football clubs and royals put their owner where the airline goes,
+  and the voice adds "belonging to ..." after the plane. Plenty of celebrity jets are registered to
+  a company standing in for the person ("Island Jet Inc"), so put a `notable/names.txt` next to
+  `docker-compose.yml` on the Pi with a registration and a name on each line, like
+  `G-ABCD A Football Club`. It wins over the list, can add planes the list doesn't have, and gets
+  picked up within the hour, no restart needed. It's gitignored, so your list stays on the Pi.
 - 🏠 **Privacy.** Your location stays in `.env` on the Pi. The Pi does ask FlightAware about planes
   passing near you, which hints at roughly where you are. Leave `AEROAPI_KEY` empty and set
   `ROUTE_API_URL=` to stop that.
@@ -278,6 +286,8 @@ most likely to change:
 | `POLICE_CALLSIGNS` | Which planes get the police look | the same, like `UKP` in the UK | empty |
 | `AIR_AMBULANCE_SQUAWKS` | More planes that get the air ambulance look | the squawks set aside for them, ranges allowed | empty |
 | `POLICE_SQUAWKS` | More planes that get the police look | the same, like `0032,0041-0061` in the UK | empty |
+| `NOTABLE_CATEGORIES` | Which of plane-alert-db's categories say who they belong to | category names, comma separated, like `Head of State` or `As Seen on TV` | `Don't you know who I am?,Oligarch,Football,Royal Aircraft` |
+| `NOTABLE_AIRCRAFT_URL` | Where the list of notable aircraft comes from | an address, or empty for none | plane-alert-db on GitHub |
 | `ALERT_URL` | Where the watchdog sends alerts | an ntfy topic address, or empty to only log them | empty |
 
 🗣️ **Picking a voice.** Have a listen on [Piper's samples page](https://rhasspy.github.io/piper-samples/),
@@ -411,6 +421,9 @@ Place names not in the Latin alphabet need their fonts too: see `tools/fetch_map
   for Shenzhen Airlines) and the card picks it up on the next plane, no restart needed. 🎨 It wins
   over the repo's own logo, and it's gitignored, so logos you can use at home but can't hand out
   never end up on GitHub.
+- Notable aircraft come from [plane-alert-db](https://github.com/sdr-enthusiasts/plane-alert-db)
+  (Open Database License), which the Pi downloads once a day rather than the repo keeping a copy.
+  Owners change, so now and then it'll name somebody who has sold up.
 - The map's scripts and fonts are fetched by `python3 tools/fetch_map_assets.py`.
 - The map runs on [MapLibre GL JS](https://maplibre.org) and [PMTiles](https://github.com/protomaps/PMTiles)
   (both BSD-3-Clause), styled with [Protomaps basemaps](https://github.com/protomaps/basemaps), in

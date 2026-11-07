@@ -130,8 +130,9 @@ class AnnouncementWording:
         police or the military have no route, so they go by what they are, and a military
         plane by what it is too: "Royal Air Force, Airbus A400M Atlas". A charter, a private
         plane, or any flight FlightAware has no route for, goes by its callsign and what it
-        is: "S X N, 3 9, Agusta AW-139 helicopter". One whose callsign is not heard yet waits
-        for it, as the callsign is half of what makes it a flight already announced."""
+        is: "S X N, 3 9, Agusta AW-139 helicopter". A notable aircraft says who it belongs
+        to after that. One whose callsign is not heard yet waits for it, as the callsign is
+        half of what makes it a flight already announced."""
         if card.get("service") and card.get("airline"):
             if card["service"] == "military" and card.get("aircraft"):
                 return f"{card['airline']}, {card['aircraft']}"
@@ -141,9 +142,12 @@ class AnnouncementWording:
             return None
         origin, destination = self._place(card.get("origin")), self._place(card.get("destination"))
         # The commas give the voice a breath after the flight number and between the parts.
+        owner = f"belonging to {card['owner']}" if card.get("owner") else None
         if origin and destination:
-            return ", ".join([spelled_flight(flight), f"from {origin}", f"to {destination}"])
-        return ", ".join(part for part in (spelled_flight(flight), _what_it_is(card)) if part)
+            parts = [spelled_flight(flight), f"from {origin}", f"to {destination}", owner]
+        else:
+            parts = [spelled_flight(flight), _what_it_is(card), owner]
+        return ", ".join(part for part in parts if part)
 
     def _place(self, airport: dict[str, Any] | None) -> str | None:
         if not airport:

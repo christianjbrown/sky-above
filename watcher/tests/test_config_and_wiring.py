@@ -42,6 +42,9 @@ FULL_ENV = {
     "POLICE_SQUAWKS": "0032, 0045-0051",
     "QUIET_HOURS_EXCEPT": "Helicopters, military",
     "HOME_COUNTRY": " gb",
+    "NOTABLE_AIRCRAFT_URL": "",
+    "NOTABLE_CATEGORIES": "Don't you know who I am?, Football,",
+    "NOTABLE_NAMES_FILE": "/etc/flights/notable/names.txt",
 }
 
 
@@ -72,6 +75,11 @@ def test_settings_read_every_value():
         Settings.from_env({**FULL_ENV, "POLICE_SQUAWKS": "0061-0041"})
     assert settings.quiet_hours_except == ("helicopters", "military")
     assert settings.home_country == "GB"
+    assert settings.notable_aircraft_url == ""
+    listed = Settings.from_env({**FULL_ENV, "NOTABLE_AIRCRAFT_URL": " https://example.com/plane-alert-db.csv "})
+    assert listed.notable_aircraft_url == "https://example.com/plane-alert-db.csv"
+    assert settings.notable_categories == ("Don't you know who I am?", "Football")
+    assert settings.notable_names_file == "/etc/flights/notable/names.txt"
     assert Settings.from_env({**FULL_ENV, "QUIET_HOURS_EXCEPT": ""}).quiet_hours_except == ()
     with pytest.raises(ConfigError, match="QUIET_HOURS_EXCEPT"):
         Settings.from_env({**FULL_ENV, "QUIET_HOURS_EXCEPT": "gliders"})
