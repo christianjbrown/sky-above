@@ -50,6 +50,7 @@ FULL_ENV = {
     "TUNING_FILE": str(REPO / "tuning" / "tuning.toml"),
     "TUNING_LOCAL_FILE": "",
     "PORTRAIT_API_URL": "",
+    "OWN_PORTRAITS_DIR": " /etc/flights/own-portraits ",
 }
 
 
@@ -92,6 +93,7 @@ def test_settings_read_every_value():
     assert settings.notable_categories == ("Don't you know who I am?", "Football")
     assert settings.notable_names_file == "/etc/flights/notable/names.txt"
     assert settings.portrait_api_url == ""
+    assert settings.own_portraits_dir == "/etc/flights/own-portraits"
     assert Settings.from_env({**FULL_ENV, "PORTRAIT_API_URL": " https://en.wikipedia.org/api/rest_v1 "}).portrait_api_url == (
         "https://en.wikipedia.org/api/rest_v1"
     )
@@ -203,6 +205,16 @@ def test_receiver_serves_logos_kept_only_on_the_pi_before_the_repos():
     locations = (REPO / "nginx" / "templates" / "card.locations.template").read_text()
     assert "root /srv/own;\n    try_files $uri @repo_logos;" in locations
     assert "own-logos/" in (REPO / ".gitignore").read_text().splitlines()
+
+
+def test_receiver_and_watcher_share_the_owner_pictures_kept_only_on_the_pi():
+    compose = yaml.safe_load((REPO / "docker-compose.yml").read_text())
+    assert "./own-portraits:/srv/own/portraits:ro" in compose["services"]["receiver"]["volumes"]
+    assert "./own-portraits:/etc/flights/own-portraits:ro" in compose["services"]["watcher"]["volumes"]
+    assert "OWN_PORTRAITS_DIR=/etc/flights/own-portraits" in compose["services"]["watcher"]["environment"]
+    locations = (REPO / "nginx" / "templates" / "card.locations.template").read_text()
+    assert "location /portraits/ {\n    alias /srv/own/portraits/;" in locations
+    assert "own-portraits/" in (REPO / ".gitignore").read_text().splitlines()
 
 
 def test_the_watcher_keeps_its_state_on_a_volume():

@@ -23,6 +23,11 @@ location @repo_logos {
     root /usr/share/nginx/html;
 }
 
+# Pictures of notable aircraft's owners kept only on the Pi, for the same reason.
+location /portraits/ {
+    alias /srv/own/portraits/;
+}
+
 # The map extract of the area round home, kept outside the page folder because it is too big for git.
 location /map/ {
     alias /srv/map/;

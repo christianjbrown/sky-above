@@ -16,7 +16,6 @@ from flights_watcher.http import UrllibJsonHttp, UrllibTextHttp
 from flights_watcher.live import LatestCard, LiveServer
 from flights_watcher.lookups import NoPhotos
 from flights_watcher.notable import NAMED, Notable
-from flights_watcher.portraits import CachedPortraits, NoPortraits
 from flights_watcher.rare import RareKinds
 from flights_watcher.speech import QuietVoice, Silence
 from flights_watcher.standby import FollowedStandby, NothingOnStandby
@@ -156,10 +155,12 @@ def test_notable_owners_come_from_the_names_file_and_the_list(tmp_path):
     assert found.of(aircraft) == Notable("A Racing Driver", NAMED)
 
 
-def test_portraits_come_from_wikipedia_unless_switched_off(tmp_path):
+def test_portraits_come_from_the_pi_first_and_nowhere_when_both_are_off(tmp_path):
     http = UrllibJsonHttp("test", 1)
-    assert isinstance(wiring.portraits(settings(tmp_path, PORTRAIT_API_URL=""), TUNING, http, FakeClock(), LOGGER), NoPortraits)
-    on = wiring.portraits(settings(tmp_path, PORTRAIT_API_URL="https://en.wikipedia.org/api/rest_v1"), TUNING, http, FakeClock(), LOGGER)
-    assert isinstance(on, CachedPortraits)
+    (tmp_path / "a-football-club.png").write_bytes(b"png")
+    own = settings(tmp_path, OWN_PORTRAITS_DIR=str(tmp_path), PORTRAIT_API_URL="https://wiki.invalid/api/rest_v1")
+    assert wiring.portraits(own, TUNING, http, FakeClock(), LOGGER).portrait("A Football Club") == "portraits/a-football-club.png"
+    off = settings(tmp_path, OWN_PORTRAITS_DIR="", PORTRAIT_API_URL="")
+    assert wiring.portraits(off, TUNING, http, FakeClock(), LOGGER).portrait("A Football Club") is None
     # Built but not asked, as asking would start a download.
     assert wiring.notables(settings(tmp_path, NOTABLE_AIRCRAFT_URL="https://example.invalid/list.csv"), TUNING, FakeClock(), LOGGER)

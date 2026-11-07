@@ -128,6 +128,7 @@ services:
       - PORTRAIT_API_URL=${PORTRAIT_API_URL-https://en.wikipedia.org/api/rest_v1}
       - TUNING_FILE=/etc/flights/tuning/tuning.toml
       - TUNING_LOCAL_FILE=/etc/flights/tuning/local.toml
+      - OWN_PORTRAITS_DIR=/etc/flights/own-portraits
     volumes:
       - speech:/var/lib/flights/speech
       - watcher_state:/var/lib/flights/state
@@ -137,6 +138,8 @@ services:
       - ./notable:/etc/flights/notable:ro
       # How it behaves, in tuning/tuning.toml, and your changes to that in tuning/local.toml.
       - ./tuning:/etc/flights/tuning:ro
+      # Owners' pictures kept only on the Pi, in own-portraits/ (see the README).
+      - ./own-portraits:/etc/flights/own-portraits:ro
 
   # Checks the watcher's /status.json every minute from outside it, and sends an
   # alert to ALERT_URL when it stops looking at the sky, keeps failing, or the
@@ -189,6 +192,7 @@ services:
       - ./receiver:/usr/share/nginx/html:ro
       - ./map:/srv/map:ro
       - ./own-logos:/srv/own/logos:ro
+      - ./own-portraits:/srv/own/portraits:ro
       - speech:/srv/speech:ro
       - certs:/certs:ro
       - ./nginx/templates:/etc/nginx/templates:ro

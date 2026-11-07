@@ -57,6 +57,7 @@ OPTIONAL_KEYS = (
     "NOTABLE_NAMES_FILE",
     "PORTRAIT_API_URL",
     "TUNING_LOCAL_FILE",
+    "OWN_PORTRAITS_DIR",
 )
 
 
@@ -118,6 +119,8 @@ class Settings:
     # The tunings the watcher runs with, and a file of changes to them, which need not exist.
     tuning_file: str
     tuning_local_file: str
+    # A folder of owners' pictures kept on the Pi, or empty for none.
+    own_portraits_dir: str
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "Settings":
@@ -165,6 +168,7 @@ class Settings:
                 portrait_api_url=env.get("PORTRAIT_API_URL", "").strip(),
                 tuning_file=env["TUNING_FILE"].strip(),
                 tuning_local_file=env.get("TUNING_LOCAL_FILE", "").strip(),
+                own_portraits_dir=env.get("OWN_PORTRAITS_DIR", "").strip(),
             )
             if settings.aeroapi_key and not (settings.aeroapi_prices and env.get("AEROAPI_UNLISTED_PRICE", "").strip()):
                 raise ValueError("an AEROAPI_KEY needs AEROAPI_PRICES and AEROAPI_UNLISTED_PRICE to count what it spends")

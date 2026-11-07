@@ -63,11 +63,13 @@
   }
 
   // The airline's logo, or a picture of who the plane belongs to when it is a notable one.
+  // A photo from the web fills the tile; one kept on the Pi is mostly a club's crest or a
+  // company's logo, so it sits whole on white like an airline's.
   function showLogo(airlineCode, helicopter, portrait) {
     var tile = document.querySelector(".logo");
     var logo = byId("logo");
     tile.classList.toggle("helicopter", !!helicopter);
-    tile.classList.toggle("portrait", !!portrait);
+    tile.classList.toggle("portrait", /^(https?|data):/.test(portrait || ""));
     var src = portrait || (airlineCode ? "logos/" + airlineCode + ".svg" : "");
     if (!src) {
       logo.removeAttribute("src");
