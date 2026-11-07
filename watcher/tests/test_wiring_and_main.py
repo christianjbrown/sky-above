@@ -16,6 +16,7 @@ from flights_watcher.http import UrllibJsonHttp, UrllibTextHttp
 from flights_watcher.live import LatestCard, LiveServer
 from flights_watcher.lookups import NoPhotos
 from flights_watcher.notable import NAMED, Notable
+from flights_watcher.portraits import CachedPortraits, NoPortraits
 from flights_watcher.rare import RareKinds
 from flights_watcher.speech import QuietVoice, Silence
 from flights_watcher.standby import FollowedStandby, NothingOnStandby
@@ -149,5 +150,12 @@ def test_notable_owners_come_from_the_names_file_and_the_list(tmp_path):
             break
         time.sleep(0.01)
     assert found.of(aircraft) == Notable("A Racing Driver", NAMED)
+
+
+def test_portraits_come_from_wikipedia_unless_switched_off(tmp_path):
+    http = UrllibJsonHttp("test", 1)
+    assert isinstance(wiring.portraits(settings(tmp_path, PORTRAIT_API_URL=""), http, FakeClock(), LOGGER), NoPortraits)
+    on = wiring.portraits(settings(tmp_path, PORTRAIT_API_URL="https://en.wikipedia.org/api/rest_v1"), http, FakeClock(), LOGGER)
+    assert isinstance(on, CachedPortraits)
     # Built but not asked, as asking would start a download.
     assert wiring.notables(settings(tmp_path, NOTABLE_AIRCRAFT_URL="https://example.invalid/list.csv"), FakeClock(), LOGGER)

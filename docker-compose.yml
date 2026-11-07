@@ -125,6 +125,7 @@ services:
       - NOTABLE_AIRCRAFT_URL=${NOTABLE_AIRCRAFT_URL-https://raw.githubusercontent.com/sdr-enthusiasts/plane-alert-db/main/plane-alert-db.csv}
       - NOTABLE_CATEGORIES=${NOTABLE_CATEGORIES-Don't you know who I am?,Oligarch,Football,Royal Aircraft}
       - NOTABLE_NAMES_FILE=/etc/flights/notable/names.txt
+      - PORTRAIT_API_URL=${PORTRAIT_API_URL-https://en.wikipedia.org/api/rest_v1}
     volumes:
       - speech:/var/lib/flights/speech
       - watcher_state:/var/lib/flights/state

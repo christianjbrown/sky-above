@@ -155,6 +155,8 @@ html, body {
 .logo img { width: 100%; height: 100%; object-fit: contain; }
 .logo.none { background: var(--panel); color: var(--muted); font-size: 8vh; padding: 0; }
 .logo.none img { display: none; }
+.logo.portrait { padding: 0; overflow: hidden; }
+.logo.portrait img { object-fit: cover; object-position: center top; }
 .logo.none::after { content: "\2708"; }
 .logo.none.helicopter::after { content: "\1F681"; }
 .airline { font-size: 9vh; font-weight: 700; color: var(--accent); min-width: 0; flex: 1; }

@@ -62,11 +62,13 @@
     fill(byId("route-to"), to ? [arrow].concat(airport(to)) : []);
   }
 
-  function showLogo(airlineCode, helicopter) {
+  // The airline's logo, or a picture of who the plane belongs to when it is a notable one.
+  function showLogo(airlineCode, helicopter, portrait) {
     var tile = document.querySelector(".logo");
     var logo = byId("logo");
     tile.classList.toggle("helicopter", !!helicopter);
-    var src = airlineCode ? "logos/" + airlineCode + ".svg" : "";
+    tile.classList.toggle("portrait", !!portrait);
+    var src = portrait || (airlineCode ? "logos/" + airlineCode + ".svg" : "");
     if (!src) {
       logo.removeAttribute("src");
       tile.classList.add("none");

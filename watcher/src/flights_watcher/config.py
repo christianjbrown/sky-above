@@ -53,6 +53,7 @@ OPTIONAL_KEYS = (
     "NOTABLE_AIRCRAFT_URL",
     "NOTABLE_CATEGORIES",
     "NOTABLE_NAMES_FILE",
+    "PORTRAIT_API_URL",
 )
 
 
@@ -109,6 +110,8 @@ class Settings:
     notable_categories: tuple[str, ...]
     # A file of registrations and who each belongs to, or empty for none.
     notable_names_file: str
+    # Where pictures of notable aircraft's owners come from (Wikipedia's REST API), or empty for none.
+    portrait_api_url: str
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "Settings":
@@ -153,6 +156,7 @@ class Settings:
                 notable_aircraft_url=env.get("NOTABLE_AIRCRAFT_URL", "").strip(),
                 notable_categories=tuple(name.strip() for name in env.get("NOTABLE_CATEGORIES", "").split(",") if name.strip()),
                 notable_names_file=env.get("NOTABLE_NAMES_FILE", "").strip(),
+                portrait_api_url=env.get("PORTRAIT_API_URL", "").strip(),
             )
             if settings.aeroapi_key and not (settings.aeroapi_prices and env.get("AEROAPI_UNLISTED_PRICE", "").strip()):
                 raise ValueError("an AEROAPI_KEY needs AEROAPI_PRICES and AEROAPI_UNLISTED_PRICE to count what it spends")

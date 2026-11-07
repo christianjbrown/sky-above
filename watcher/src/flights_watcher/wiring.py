@@ -114,6 +114,7 @@ from flights_watcher.paths import (
     PathFinder,
     PathRecorder,
 )
+from flights_watcher.portraits import CachedPortraits, NoPortraits, PortraitLookup, WikipediaPortraits
 from flights_watcher.presence import Linger, MinimumShowing
 from flights_watcher.priority import ServicesStay
 from flights_watcher.rare import RareKinds
@@ -312,6 +313,11 @@ NOTABLE_FILE = "plane-alert-db.csv"
 NOTABLE_MAX_AGE_SECONDS = 24 * 3600
 NOTABLE_REREAD_SECONDS = 3600
 NOTABLE_TIMEOUT_SECONDS = 60
+# Pictures of notable aircraft's owners are asked for again after a day, or ten minutes
+# after none was found, for this many owners at once.
+PORTRAIT_CACHE_SECONDS = 24 * 3600
+PORTRAIT_RETRY_SECONDS = 600
+PORTRAIT_CACHE_ENTRIES = 200
 # Words in aircraft names the voice gets wrong, and how to write them so it says them
 # right: MAX is said as a word, not spelled out, and ERJ is spelled out, not said as one.
 SAID_AS_WORDS = {"MAX": "Max", "ERJ": "E R J"}
@@ -533,6 +539,15 @@ def notables(settings: Settings, clock: Clock, logger: logging.Logger) -> Notabl
     )
 
 
+def portraits(settings: Settings, http: JsonHttp, clock: Clock, logger: logging.Logger) -> PortraitLookup:
+    """Pictures of who notable aircraft belong to, from Wikipedia, asked about only when
+    one gets a card."""
+    if not settings.portrait_api_url:
+        return NoPortraits()
+    cache: TtlCache[str | None] = TtlCache(clock, PORTRAIT_CACHE_SECONDS, PORTRAIT_CACHE_ENTRIES, PORTRAIT_RETRY_SECONDS)
+    return CachedPortraits(WikipediaPortraits(settings.portrait_api_url, http), cache, logger)
+
+
 def watcher_for(
     settings: Settings,
     http: JsonHttp,
@@ -596,7 +611,11 @@ def watcher_for(
             PathFinder(paths, bound, BOUND_WITHIN, settings.home, zone.radius_km, PATH_MIN_PLANES, PATH_HELD_POLLS),
         ]
     )
-    cards = OwnedCards(CardBuilder(found.routes, found.photos, AircraftNames(), services, logger), notables(settings, clock, logger))
+    cards = OwnedCards(
+        CardBuilder(found.routes, found.photos, AircraftNames(), services, logger),
+        notables(settings, clock, logger),
+        portraits(settings, http, clock, logger),
+    )
 
     def planes_message(speech: QuietVoice | Silence) -> PlanesMessageBuilder:
         return PlanesMessageBuilder(

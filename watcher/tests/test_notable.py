@@ -15,6 +15,7 @@ from flights_watcher.notable import (
     NotableAircraft,
     NoText,
     OwnedCards,
+    Owner,
     ThreadStarter,
     owner_names,
     plane_alert_table,
@@ -78,14 +79,21 @@ def test_the_list_gives_each_aircraft_in_the_chosen_categories_by_hex():
 
 
 def test_the_names_file_says_who_each_registration_belongs_to():
-    text = "# who really owns them\n\nN123AB  A Pop Star\ng-abcd A Football Club\nG-NONAME\n"
-    assert owner_names(text) == {"N123AB": "A Pop Star", "GABCD": "A Football Club"}
+    text = (
+        "# who really owns them\n\nN123AB  A Pop Star\ng-abcd A Football Club\nG-NONAME\n"
+        "G-ROYL The King | A King (monarch)\nG-BAR | Nobody\n"
+    )
+    assert owner_names(text) == {
+        "N123AB": Owner("A Pop Star"),
+        "GABCD": Owner("A Football Club"),
+        "GROYL": Owner("The King", "A King (monarch)"),
+    }
 
 
 def test_the_names_file_comes_first_and_can_add_planes_the_list_leaves_out():
     table = Now({"abc123": Notable("Island Jets Inc", "Don't you know who I am?"), "4ca001": Notable("A Football Club", "Football")})
-    notables = NotableAircraft(table, Now({"N123AB": "A Pop Star", "GEUYM": "A Racing Driver"}))
-    assert notables.of(plane("ABC123", registration="N123AB")) == Notable("A Pop Star", "Don't you know who I am?")
+    notables = NotableAircraft(table, Now({"N123AB": Owner("A Pop Star", "A Pop Star (singer)"), "GEUYM": Owner("A Racing Driver")}))
+    assert notables.of(plane("ABC123", registration="N123AB")) == Notable("A Pop Star", "Don't you know who I am?", "A Pop Star (singer)")
     assert notables.of(plane("4ca001", registration="G-ABCD")) == Notable("A Football Club", "Football")
     assert notables.of(plane("4ca7b5", registration="G-EUYM")) == Notable("A Racing Driver", NAMED)
     assert notables.of(plane("4ca7b6", registration=None)) is None
@@ -100,9 +108,22 @@ def test_cards_say_who_a_notable_plane_belongs_to():
         def of(self, aircraft):
             return Notable("A Pop Star", "Don't you know who I am?") if aircraft.hex == "abc123" else None
 
-    cards = OwnedCards(Cards(), Notables())
-    assert cards.card(Sighting(plane("abc123"), 1.0)) == {"hex": "abc123", "owner": "A Pop Star"}
-    assert cards.card(Sighting(plane("def456"), 1.0)) == {"hex": "def456", "owner": None}
+    class Portraits:
+        def portrait(self, article):
+            return f"https://example.com/{article}.jpg"
+
+    cards = OwnedCards(Cards(), Notables(), Portraits())
+    assert cards.card(Sighting(plane("abc123"), 1.0)) == {
+        "hex": "abc123",
+        "owner": "A Pop Star",
+        "ownerPortrait": "https://example.com/A Pop Star.jpg",
+    }
+    assert cards.card(Sighting(plane("def456"), 1.0)) == {"hex": "def456", "owner": None, "ownerPortrait": None}
+
+
+def test_an_owner_is_looked_up_by_their_article_when_it_has_another_name():
+    assert Notable("The King", "Royal Aircraft", "A King (monarch)").about == "A King (monarch)"
+    assert Notable("A Pop Star", "Don't you know who I am?").about == "A Pop Star"
 
 
 def test_a_slow_value_is_got_in_the_background_and_again_when_it_is_due():
