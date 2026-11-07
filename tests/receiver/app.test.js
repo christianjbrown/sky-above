@@ -123,6 +123,13 @@ describe("on the Hub", () => {
     expect(text("flight")).toBe("4CA7B5");
   });
 
+  it("names who a notable plane belongs to when it has no airline", () => {
+    deliver(planesMessage({ airline: null, owner: "A Pop Star", flightNumber: null }));
+    expect(text("airline")).toBe("A Pop Star");
+    deliver(planesMessage({ owner: "A Pop Star" }));
+    expect(text("airline")).toBe("British Airways");
+  });
+
   it("leaves out the flag of home's own country", () => {
     deliver(planesMessage());
     expect(text("route-to")).not.toContain("\u{1F1EC}\u{1F1E7}");
@@ -366,6 +373,14 @@ describe("the demo plane", () => {
     expect(screenClasses()).toEqual(["emergency"]);
     expect(text("note")).toBe("Squawk 7700 \u00b7 General emergency");
     expect(text("flight")).toBe("BA86S");
+  });
+
+  it("shows the notable demo with who the jet belongs to", async () => {
+    await open({ query: "?demo=notable" });
+    expect(screenClasses()).toEqual([]);
+    expect(text("airline")).toBe("A Pop Star");
+    expect(text("flight")).toBe("GPOPS");
+    expect(text("aircraft")).toBe("Dassault Falcon 7X");
   });
 
   it("treats an unknown demo name as the plain demo plane", async () => {

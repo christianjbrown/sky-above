@@ -56,7 +56,7 @@ from flights_watcher.followed_news import (
 )
 from flights_watcher.following import FollowedFlights, FollowTiming
 from flights_watcher.heard import SpeechTiming
-from flights_watcher.http import JsonHttp, UrllibJsonHttp
+from flights_watcher.http import JsonHttp, UrllibJsonHttp, UrllibTextHttp
 from flights_watcher.live import LatestCard, LiveServer
 from flights_watcher.lookups import (
     AdsbdbRouteLookup,
@@ -90,6 +90,18 @@ from flights_watcher.naming import (
     Service,
     Services,
     SquawkServices,
+)
+from flights_watcher.notable import (
+    InBackground,
+    LocalText,
+    MirroredText,
+    NotableAircraft,
+    NotableFinder,
+    NoText,
+    OwnedCards,
+    ThreadStarter,
+    owner_names,
+    plane_alert_table,
 )
 from flights_watcher.paths import (
     CameOverhead,
@@ -305,6 +317,12 @@ EMERGENCIES_ANNOUNCED_REMEMBERED = 20
 # further than this from home.
 SERVICES_KEPT = ("ambulance", "police", "military")
 SERVICE_HOLD_KM = 5
+# The notable aircraft list on the Pi, fetched again once it is this old, and read again
+# this often, so a changed names file is picked up without a restart.
+NOTABLE_FILE = "plane-alert-db.csv"
+NOTABLE_MAX_AGE_SECONDS = 24 * 3600
+NOTABLE_REREAD_SECONDS = 3600
+NOTABLE_TIMEOUT_SECONDS = 60
 # Words in aircraft names the voice gets wrong, and how to write them so it says them
 # right: MAX is said as a word, not spelled out, and ERJ is spelled out, not said as one.
 SAID_AS_WORDS = {"MAX": "Max", "ERJ": "E R J"}
@@ -501,6 +519,31 @@ def display_for(settings: Settings, status: WatchStatus, clock: Clock, logger: l
     return Stamped(display, {"homeCountry": home_country}), live_server
 
 
+def notables(settings: Settings, clock: Clock, logger: logging.Logger) -> NotableFinder:
+    """Who notable aircraft belong to, from plane-alert-db and the names file. Both are
+    read on work of their own, so a slow download never holds up a card."""
+    table = (
+        MirroredText(
+            settings.notable_aircraft_url,
+            pathlib.Path(settings.state_dir) / NOTABLE_FILE,
+            NOTABLE_MAX_AGE_SECONDS,
+            UrllibTextHttp(USER_AGENT, NOTABLE_TIMEOUT_SECONDS),
+            clock,
+            logger,
+        )
+        if settings.notable_aircraft_url
+        else NoText()
+    )
+    names = LocalText(pathlib.Path(settings.notable_names_file)) if settings.notable_names_file else NoText()
+    starter = ThreadStarter()
+    return NotableAircraft(
+        InBackground(
+            lambda: plane_alert_table(table.text() or "", settings.notable_categories), {}, clock, NOTABLE_REREAD_SECONDS, starter
+        ),
+        InBackground(lambda: owner_names(names.text() or ""), {}, clock, NOTABLE_REREAD_SECONDS, starter),
+    )
+
+
 def watcher_for(
     settings: Settings,
     http: JsonHttp,
@@ -564,7 +607,7 @@ def watcher_for(
             PathFinder(paths, bound, BOUND_WITHIN, settings.home, zone.radius_km, PATH_MIN_PLANES, PATH_HELD_POLLS),
         ]
     )
-    cards = CardBuilder(found.routes, found.photos, AircraftNames(), services, logger)
+    cards = OwnedCards(CardBuilder(found.routes, found.photos, AircraftNames(), services, logger), notables(settings, clock, logger))
 
     def planes_message(speech: QuietVoice | Silence) -> PlanesMessageBuilder:
         return PlanesMessageBuilder(

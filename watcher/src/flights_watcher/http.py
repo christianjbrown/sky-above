@@ -1,4 +1,4 @@
-"""Fetching JSON over HTTP."""
+"""Fetching JSON and text over HTTP."""
 
 import json
 from collections.abc import Mapping
@@ -19,9 +19,30 @@ class UrllibJsonHttp:
         self._headers = dict(headers or {})
 
     def get_json(self, url: str) -> Any:
-        if not url.startswith(("https://", "http://")):
-            raise ValueError(f"not a web address: {url}")
         headers = {"User-Agent": self._user_agent, "Accept": "application/json", **self._headers}
-        request = Request(url, headers=headers)  # noqa: S310 - the scheme is checked above
-        with urlopen(request, timeout=self._timeout_seconds) as response:  # noqa: S310
+        with _opened(url, headers, self._timeout_seconds) as response:
             return json.load(response)
+
+
+class TextHttp(Protocol):
+    def get_text(self, url: str) -> str:
+        """Return the body as text. Raises OSError (HTTPError included) or ValueError."""
+        ...
+
+
+class UrllibTextHttp:
+    def __init__(self, user_agent: str, timeout_seconds: float) -> None:
+        self._user_agent = user_agent
+        self._timeout_seconds = timeout_seconds
+
+    def get_text(self, url: str) -> str:
+        with _opened(url, {"User-Agent": self._user_agent}, self._timeout_seconds) as response:
+            body: bytes = response.read()
+            return body.decode("utf-8")
+
+
+def _opened(url: str, headers: Mapping[str, str], timeout_seconds: float) -> Any:
+    if not url.startswith(("https://", "http://")):
+        raise ValueError(f"not a web address: {url}")
+    request = Request(url, headers=dict(headers))  # noqa: S310 - the scheme is checked above
+    return urlopen(request, timeout=timeout_seconds)  # noqa: S310

@@ -1,19 +1,21 @@
 import logging
 import threading
+import time
 from datetime import UTC
 
 import pytest
 from test_config_and_wiring import FULL_ENV
 
-from fakes import FakeClock
+from fakes import FakeClock, plane
 from flights_watcher import __main__ as entry
 from flights_watcher import wiring
 from flights_watcher.chime import MutedLaunchDevice
 from flights_watcher.clock import SystemClock
 from flights_watcher.config import Settings
-from flights_watcher.http import UrllibJsonHttp
+from flights_watcher.http import UrllibJsonHttp, UrllibTextHttp
 from flights_watcher.live import LatestCard, LiveServer
 from flights_watcher.lookups import NoPhotos
+from flights_watcher.notable import NAMED, Notable
 from flights_watcher.rare import RareKinds
 from flights_watcher.speech import QuietVoice, Silence
 from flights_watcher.standby import FollowedStandby, NothingOnStandby
@@ -126,9 +128,26 @@ def test_json_is_fetched_over_http_and_only_http():
         assert http.get_json(f"http://127.0.0.1:{port}/planes.json") == {"type": "planes"}
         with pytest.raises(ValueError, match="not a web address"):
             http.get_json("file:///etc/passwd")
+        assert UrllibTextHttp("test", 2).get_text(f"http://127.0.0.1:{port}/planes.json") == '{"type": "planes"}'
+        with pytest.raises(ValueError, match="not a web address"):
+            UrllibTextHttp("test", 2).get_text("file:///etc/passwd")
     finally:
         server.stop()
 
 
 def test_aircraft_names_are_written_the_way_they_are_said():
     assert wiring.SAID_AS_WORDS == {"MAX": "Max", "ERJ": "E R J"}
+
+
+def test_notable_owners_come_from_the_names_file_and_the_list(tmp_path):
+    names = tmp_path / "names.txt"
+    names.write_text("G-EUYM A Racing Driver\n")
+    found = wiring.notables(settings(tmp_path, NOTABLE_AIRCRAFT_URL="", NOTABLE_NAMES_FILE=str(names)), FakeClock(), LOGGER)
+    aircraft = plane("4ca7b5", registration="G-EUYM")
+    for _ in range(500):
+        if found.of(aircraft):
+            break
+        time.sleep(0.01)
+    assert found.of(aircraft) == Notable("A Racing Driver", NAMED)
+    # Built but not asked, as asking would start a download.
+    assert wiring.notables(settings(tmp_path, NOTABLE_AIRCRAFT_URL="https://example.invalid/list.csv"), FakeClock(), LOGGER)

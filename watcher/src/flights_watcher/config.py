@@ -47,6 +47,9 @@ OPTIONAL_KEYS = (
     "POLICE_CALLSIGNS",
     "QUIET_HOURS_EXCEPT",
     "HOME_COUNTRY",
+    "NOTABLE_AIRCRAFT_URL",
+    "NOTABLE_CATEGORIES",
+    "NOTABLE_NAMES_FILE",
 )
 
 
@@ -93,6 +96,12 @@ class Settings:
     quiet_hours_except: tuple[str, ...]
     # Two-letter country code, or empty to go by the nearest airport.
     home_country: str
+    # Where to fetch plane-alert-db's list of notable aircraft, or empty for none.
+    notable_aircraft_url: str
+    # Which of its categories to name the owners of.
+    notable_categories: tuple[str, ...]
+    # A file of registrations and who each belongs to, or empty for none.
+    notable_names_file: str
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "Settings":
@@ -132,6 +141,9 @@ class Settings:
                 police_squawks=_squawks(env.get("POLICE_SQUAWKS", "")),
                 quiet_hours_except=_kinds(env.get("QUIET_HOURS_EXCEPT", "")),
                 home_country=env.get("HOME_COUNTRY", "").strip().upper(),
+                notable_aircraft_url=env.get("NOTABLE_AIRCRAFT_URL", "").strip(),
+                notable_categories=tuple(name.strip() for name in env.get("NOTABLE_CATEGORIES", "").split(",") if name.strip()),
+                notable_names_file=env.get("NOTABLE_NAMES_FILE", "").strip(),
             )
         except ValueError as error:
             raise ConfigError(f"bad setting: {error}") from error

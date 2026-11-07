@@ -97,7 +97,7 @@
     followedCard.hide();
 
     parts.showLogo(plane.airlineCode, plane.helicopter);
-    parts.setText("airline", plane.airline || plane.callsign || "");
+    parts.setText("airline", plane.airline || plane.owner || plane.callsign || "");
     parts.setText("flight", plane.flightNumber || plane.callsign || plane.registration || plane.hex.toUpperCase());
     parts.showRoute(plane.origin, plane.destination);
     parts.setText("aircraft", plane.aircraft || plane.typeCode || "");
@@ -176,6 +176,13 @@
     }
   };
 
+  // A made-up private jet with a made-up owner, as a names file might give it.
+  var NOTABLE_DEMO = {
+    callsign: "GPOPS", flightNumber: null, airline: null, airlineCode: null, owner: "A Pop Star",
+    origin: null, destination: null, aircraft: "Dassault Falcon 7X", typeCode: "FA7X", registration: "G-POPS",
+    altitudeFt: 5200, speedKt: 260, verticalRateFpm: -900
+  };
+
   function startDemo(which) {
     var km = 8;
     var sample = {
@@ -214,7 +221,9 @@
       ]
     };
     var service = SERVICE_DEMOS[which];
-    if (which === "emergency") {
+    if (which === "notable") {
+      Object.assign(sample.planes[0], NOTABLE_DEMO);
+    } else if (which === "emergency") {
       sample.planes[0].emergency = { kind: "general", squawk: "7700", label: "General emergency" };
     } else if (service) {
       Object.assign(sample.planes[0], service, { service: which, flightNumber: null, origin: null, destination: null });

@@ -8,6 +8,8 @@ map/
 own-logos/
 # Our own and family flights, which say when the house is empty.
 followed/
+# Who notable aircraft belong to, kept by hand on the Pi.
+notable/
 # Test tooling.
 node_modules/
 coverage/
