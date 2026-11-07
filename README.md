@@ -217,6 +217,57 @@ It also speaks up when something changes 🔔:
 
 Each followed flight costs roughly 50 cents to $2 in AeroAPI lookups.
 
+## Famous aircraft 🌟
+
+Sometimes the plane overhead belongs to somebody you've heard of. When it does, the card says who,
+with their picture where the airline logo usually goes, and the voice adds "belonging to ..." after
+the plane.
+
+![A made-up private jet with a made-up pop star as its owner, a silhouette in the logo's place](docs/screenshots/notable.jpg)
+
+*A made-up jet and owner. Real ones get a real photo.*
+
+It works out of the box, nothing to set up. The Pi downloads
+[plane-alert-db](https://github.com/sdr-enthusiasts/plane-alert-db), a community list of about
+17,000 interesting aircraft, once a day, and looks planes up in its own copy, so nobody hears which
+planes you're asking about. By default it names the owners of four of the list's categories:
+celebrities ("Don't you know who I am?"), oligarchs, football clubs and royal aircraft. Want more?
+Add categories such as `Head of State` or `As Seen on TV` to `NOTABLE_CATEGORIES` in `.env`.
+
+Pictures come from Wikipedia: the lead picture of the owner's article, which is their official
+portrait where they have one. Only freely licensed pictures from Wikimedia Commons are used, and
+Wikipedia is only asked when one of these planes actually gets a card.
+
+### Fixing names 📝
+
+Plenty of celebrity jets are registered to a company standing in for the person, so the list says
+"Island Jet Inc" where you'd want a name. Fix that with `notable/names.txt` next to
+`docker-compose.yml` on the Pi, one plane to a line: the registration, then who it belongs to.
+
+```
+# Lines starting with # are ignored.
+G-ABCD A Football Club
+G-EFGH A Pop Star
+G-IJKL The King | Charles III
+G-MNOP Drake | Drake (musician)
+```
+
+- A line here beats the list, and can add a plane the list doesn't have at all.
+- After a `|` goes the owner's Wikipedia article, for when it isn't simply the name on the card,
+  or when the name could be several people (Drake, say). That's where the picture comes from.
+- Changes get picked up within the hour, no restart needed.
+- It's gitignored, so your list never ends up on GitHub.
+
+### Your own pictures 🖼️
+
+Football clubs, teams and companies only have logos and crests on Wikipedia, and those are there
+under fair use, so Sky Above won't fetch them. You can still use them at home: drop a picture into
+`own-portraits/` next to `docker-compose.yml` on the Pi, named after the owner in lower case with
+hyphens for spaces and punctuation, like `a-football-club.png`. Where you've given a Wikipedia
+article after a `|`, name it after that instead (`charles-iii.jpg`). JPG, PNG, WebP and SVG all work.
+A picture here wins over Wikipedia's, the next card picks it up, and it's gitignored too, like
+`own-logos/`.
+
 ## Good to know
 
 - 🤫 **Quiet hours.** Nothing on the screen from midnight to 8am, except helicopters and military
@@ -241,17 +292,6 @@ Each followed flight costs roughly 50 cents to $2 in AeroAPI lookups.
   same screen just has to wait its turn.
 - 🧪 **Try it without a plane.** Open `http://skyabove.local:8090/?demo` for a made-up one. Also
   `?demo=followed`, `?demo=taxiing`, `?demo=flying`, `?demo=landed`, `?demo=ambulance`, `?demo=police`, `?demo=military`, `?demo=emergency` and `?demo=notable`.
-- 🌟 **Who's that?** Aircraft on [plane-alert-db](https://github.com/sdr-enthusiasts/plane-alert-db)'s
-  list of celebrities, oligarchs, football clubs and royals put their owner where the airline goes,
-  and the voice adds "belonging to ..." after the plane. Plenty of celebrity jets are registered to
-  a company standing in for the person ("Island Jet Inc"), so put a `notable/names.txt` next to
-  `docker-compose.yml` on the Pi with a registration and a name on each line, like
-  `G-ABCD A Football Club`. It wins over the list, can add planes the list doesn't have, and gets
-  picked up within the hour, no restart needed. It's gitignored, so your list stays on the Pi.
-- 🖼️ **And a face to go with it.** The owner's picture takes the logo's spot: the lead picture of
-  their Wikipedia article, so an official portrait where there is one. Where the name on the card
-  isn't the article's name, add it after a bar in `names.txt`: `G-ABCD The King | Charles III`.
-  Names that could be several people (Drake, say) need that too.
 - 🏠 **Privacy.** Your location stays in `.env` on the Pi. The Pi does ask FlightAware about planes
   passing near you, which hints at roughly where you are. Leave `AEROAPI_KEY` empty and set
   `ROUTE_API_URL=` to stop that.
