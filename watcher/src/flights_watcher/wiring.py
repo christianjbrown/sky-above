@@ -6,12 +6,13 @@ import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from flights_watcher.announced import RememberedFlights
 from flights_watcher.approach import ApproachFinder, ClosestApproach, LandsFirst, OverheadAndApproaching, SteeredIn
 from flights_watcher.bound import DestinationBound, SameWay
-from flights_watcher.budget import BudgetedHttp, MonthlyBudget
+from flights_watcher.budget import BudgetedHttp, MonthlyBudget, PricedByPath
 from flights_watcher.caching import CachedOperatorNames, CachedPhotoLookup, CachedRouteLookup, RetryLater, TtlCache
 from flights_watcher.cards import CardBuilder
 from flights_watcher.chime import MutedLaunchDevice
@@ -147,6 +148,16 @@ OPERATOR_KEPT_FRESH = timedelta(days=365)
 # Airlines that write their own flight numbers with the ICAO code: easyJet and its
 # European and Swiss arms all sell and board as EZY, never U2, EC or DS.
 ICAO_NUMBERED_AIRLINES = ("EZY", "EJU", "EZS")
+# What AeroAPI charges for each kind of request the watcher makes, from the fee list at
+# https://www.flightaware.com/commercial/aeroapi/. Each request asks for one page, and
+# FlightAware charges by the page. Anything not listed is priced at the dearest fee
+# on that list, so a new kind of request can only ever be overcounted.
+AEROAPI_PRICES = (
+    (r"/flights/[^/]+/position", Decimal("0.010")),
+    (r"/flights/[^/]+", Decimal("0.005")),
+    (r"/operators/[^/]+", Decimal("0.015")),
+)
+AEROAPI_UNLISTED_PRICE = Decimal("0.200")
 CAST_RETRY_SECONDS = 30
 # Airports whose city in the route services is not the one people would say, mostly
 # because it is the town the airport stands in, and the airports of cities that have
@@ -352,7 +363,8 @@ def lookups(settings: Settings, http: JsonHttp, clock: Clock, logger: logging.Lo
     if settings.aeroapi_key:
         aeroapi = BudgetedHttp(
             UrllibJsonHttp(USER_AGENT, timeout_seconds=5, headers={"x-apikey": settings.aeroapi_key}),
-            MonthlyBudget(settings.aeroapi_monthly_limit, pathlib.Path(settings.state_dir) / "aeroapi.json", clock),
+            MonthlyBudget(settings.aeroapi_monthly_dollars, pathlib.Path(settings.state_dir) / "aeroapi.json", clock),
+            PricedByPath(settings.aeroapi_url, AEROAPI_PRICES, AEROAPI_UNLISTED_PRICE),
         )
         answers = str(pathlib.Path(settings.state_dir) / ANSWERS_FILE)
         known_routes = KeptRouteLookup(SqliteAnswerStore(answers, "route", logger))
@@ -429,7 +441,8 @@ def followed_standby(
     # Its own monthly cap, so a busy sky cannot use up the lookups a followed flight needs.
     followed_http = BudgetedHttp(
         UrllibJsonHttp(USER_AGENT, timeout_seconds=5, headers={"x-apikey": settings.aeroapi_key}),
-        MonthlyBudget(settings.followed_monthly_limit, pathlib.Path(settings.state_dir) / FOLLOWED_BUDGET_FILE, clock),
+        MonthlyBudget(settings.followed_monthly_dollars, pathlib.Path(settings.state_dir) / FOLLOWED_BUDGET_FILE, clock),
+        PricedByPath(settings.aeroapi_url, AEROAPI_PRICES, AEROAPI_UNLISTED_PRICE),
     )
     schedules = AeroApiSchedules(settings.aeroapi_url, followed_http)
     timezone = ZoneInfo(settings.timezone)
