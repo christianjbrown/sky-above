@@ -2,6 +2,7 @@
 
 import logging
 import os
+import pathlib
 import signal
 import threading
 from collections.abc import Mapping
@@ -10,6 +11,7 @@ from zoneinfo import ZoneInfo
 from flights_watcher.clock import SystemClock
 from flights_watcher.config import Settings
 from flights_watcher.runner import Runner
+from flights_watcher.tuning import load_tuning
 from flights_watcher.wiring import build
 
 
@@ -17,7 +19,9 @@ def main(environ: Mapping[str, str], stop: threading.Event) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     logger = logging.getLogger("flights")
     settings = Settings.from_env(environ)
-    app = build(settings, SystemClock(ZoneInfo(settings.timezone)), logger)
+    local = pathlib.Path(settings.tuning_local_file) if settings.tuning_local_file else None
+    tuning = load_tuning(pathlib.Path(settings.tuning_file), local)
+    app = build(settings, tuning, SystemClock(ZoneInfo(settings.timezone)), logger)
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())
     if app.live_server is not None:

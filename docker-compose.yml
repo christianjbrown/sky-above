@@ -126,6 +126,8 @@ services:
       - NOTABLE_CATEGORIES=${NOTABLE_CATEGORIES-Don't you know who I am?,Oligarch,Football,Royal Aircraft}
       - NOTABLE_NAMES_FILE=/etc/flights/notable/names.txt
       - PORTRAIT_API_URL=${PORTRAIT_API_URL-https://en.wikipedia.org/api/rest_v1}
+      - TUNING_FILE=/etc/flights/tuning/tuning.toml
+      - TUNING_LOCAL_FILE=/etc/flights/tuning/local.toml
     volumes:
       - speech:/var/lib/flights/speech
       - watcher_state:/var/lib/flights/state
@@ -133,6 +135,8 @@ services:
       - ./followed:/etc/flights/followed:ro
       # Who notable aircraft belong to, in notable/names.txt next to this file (see the README).
       - ./notable:/etc/flights/notable:ro
+      # How it behaves, in tuning/tuning.toml, and your changes to that in tuning/local.toml.
+      - ./tuning:/etc/flights/tuning:ro
 
   # Checks the watcher's /status.json every minute from outside it, and sends an
   # alert to ALERT_URL when it stops looking at the sky, keeps failing, or the

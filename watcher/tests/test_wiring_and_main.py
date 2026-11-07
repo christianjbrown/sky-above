@@ -4,7 +4,7 @@ import time
 from datetime import UTC
 
 import pytest
-from test_config_and_wiring import FULL_ENV
+from test_config_and_wiring import FULL_ENV, REPO
 
 from fakes import FakeClock, plane
 from flights_watcher import __main__ as entry
@@ -21,8 +21,10 @@ from flights_watcher.rare import RareKinds
 from flights_watcher.speech import QuietVoice, Silence
 from flights_watcher.standby import FollowedStandby, NothingOnStandby
 from flights_watcher.status import WatchStatus
+from flights_watcher.tuning import load_tuning
 
 LOGGER = logging.getLogger("test")
+TUNING = load_tuning(REPO / "tuning" / "tuning.toml", None)
 
 
 def settings(tmp_path, **changes: str) -> Settings:
@@ -32,15 +34,15 @@ def settings(tmp_path, **changes: str) -> Settings:
 
 def test_with_everything_switched_on_every_part_is_built(tmp_path):
     full = settings(tmp_path, AEROAPI_KEY="test-key", CAST_APP_ID="APP")
-    app = wiring.build(full, FakeClock(), LOGGER)
-    found = wiring.lookups(full, UrllibJsonHttp("test", 1), FakeClock(), LOGGER)
-    voice = wiring.voices(full, FakeClock(), RareKinds(()), LOGGER)
+    app = wiring.build(full, TUNING, FakeClock(), LOGGER)
+    found = wiring.lookups(full, TUNING, UrllibJsonHttp("test", 1), FakeClock(), LOGGER)
+    voice = wiring.voices(full, TUNING, FakeClock(), RareKinds(()), LOGGER)
     assert app.live_server is not None
     assert found.operator_names is not None
     assert not isinstance(found.photos, NoPhotos)
     assert found.known_routes is not found.routes
     assert isinstance(voice.planes, QuietVoice) and isinstance(voice.followed, QuietVoice)
-    assert isinstance(wiring.followed_standby(full, found, voice, FakeClock(), LOGGER), FollowedStandby)
+    assert isinstance(wiring.followed_standby(full, TUNING, found, voice, FakeClock(), LOGGER), FollowedStandby)
 
 
 def test_with_everything_switched_off_the_watcher_still_runs_on_its_own(tmp_path, caplog):
@@ -48,30 +50,32 @@ def test_with_everything_switched_off_the_watcher_still_runs_on_its_own(tmp_path
         tmp_path, ROUTE_API_URL="", PHOTO_API_URL="", SPEECH_SERVER="", LIVE_PORT="", FOLLOWED_FILE="", HOME_COUNTRY="", CAST_APP_ID=""
     )
     with caplog.at_level(logging.INFO, logger="test"):
-        app = wiring.build(bare, FakeClock(), LOGGER)
-    found = wiring.lookups(bare, UrllibJsonHttp("test", 1), FakeClock(), LOGGER)
-    voice = wiring.voices(bare, FakeClock(), RareKinds(()), LOGGER)
+        app = wiring.build(bare, TUNING, FakeClock(), LOGGER)
+    found = wiring.lookups(bare, TUNING, UrllibJsonHttp("test", 1), FakeClock(), LOGGER)
+    voice = wiring.voices(bare, TUNING, FakeClock(), RareKinds(()), LOGGER)
     assert app.live_server is None
     assert found.operator_names is None and isinstance(found.photos, NoPhotos)
     assert isinstance(voice.planes, Silence) and isinstance(voice.followed, Silence)
-    assert isinstance(wiring.followed_standby(bare, found, voice, FakeClock(), LOGGER), NothingOnStandby)
+    assert isinstance(wiring.followed_standby(bare, TUNING, found, voice, FakeClock(), LOGGER), NothingOnStandby)
     assert "planes are logged rather than cast" in caplog.text
     assert "going by the nearest airport: GB" in caplog.text
 
 
 def test_followed_flights_need_aeroapi_as_well_as_a_list(tmp_path):
     adsbdb_only = settings(tmp_path)
-    found = wiring.lookups(adsbdb_only, UrllibJsonHttp("test", 1), FakeClock(), LOGGER)
+    found = wiring.lookups(adsbdb_only, TUNING, UrllibJsonHttp("test", 1), FakeClock(), LOGGER)
     assert found.known_routes is found.routes
-    voice = wiring.voices(adsbdb_only, FakeClock(), RareKinds(()), LOGGER)
-    assert isinstance(wiring.followed_standby(adsbdb_only, found, voice, FakeClock(), LOGGER), NothingOnStandby)
+    voice = wiring.voices(adsbdb_only, TUNING, FakeClock(), RareKinds(()), LOGGER)
+    assert isinstance(wiring.followed_standby(adsbdb_only, TUNING, found, voice, FakeClock(), LOGGER), NothingOnStandby)
 
 
 @pytest.mark.parametrize(("mute", "muted_launch"), [("true", True), ("false", False)])
 def test_the_hub_is_muted_through_its_chime_only_when_asked(tmp_path, monkeypatch, mute, muted_launch):
     wrapped = []
     monkeypatch.setattr(wiring, "CoolingOffDevice", lambda hub, *_: wrapped.append(hub) or hub)
-    wiring.display_for(settings(tmp_path, CAST_APP_ID="APP", MUTE_CHIME=mute, LIVE_PORT=""), WatchStatus(FakeClock()), FakeClock(), LOGGER)
+    wiring.display_for(
+        settings(tmp_path, CAST_APP_ID="APP", MUTE_CHIME=mute, LIVE_PORT=""), TUNING, WatchStatus(FakeClock()), FakeClock(), LOGGER
+    )
     assert isinstance(wrapped[0], MutedLaunchDevice) is muted_launch
 
 
@@ -137,13 +141,13 @@ def test_json_is_fetched_over_http_and_only_http():
 
 
 def test_aircraft_names_are_written_the_way_they_are_said():
-    assert wiring.SAID_AS_WORDS == {"MAX": "Max", "ERJ": "E R J"}
+    assert TUNING.said_as_words == {"MAX": "Max", "ERJ": "E R J"}
 
 
 def test_notable_owners_come_from_the_names_file_and_the_list(tmp_path):
     names = tmp_path / "names.txt"
     names.write_text("G-EUYM A Racing Driver\n")
-    found = wiring.notables(settings(tmp_path, NOTABLE_AIRCRAFT_URL="", NOTABLE_NAMES_FILE=str(names)), FakeClock(), LOGGER)
+    found = wiring.notables(settings(tmp_path, NOTABLE_AIRCRAFT_URL="", NOTABLE_NAMES_FILE=str(names)), TUNING, FakeClock(), LOGGER)
     aircraft = plane("4ca7b5", registration="G-EUYM")
     for _ in range(500):
         if found.of(aircraft):
@@ -154,8 +158,8 @@ def test_notable_owners_come_from_the_names_file_and_the_list(tmp_path):
 
 def test_portraits_come_from_wikipedia_unless_switched_off(tmp_path):
     http = UrllibJsonHttp("test", 1)
-    assert isinstance(wiring.portraits(settings(tmp_path, PORTRAIT_API_URL=""), http, FakeClock(), LOGGER), NoPortraits)
-    on = wiring.portraits(settings(tmp_path, PORTRAIT_API_URL="https://en.wikipedia.org/api/rest_v1"), http, FakeClock(), LOGGER)
+    assert isinstance(wiring.portraits(settings(tmp_path, PORTRAIT_API_URL=""), TUNING, http, FakeClock(), LOGGER), NoPortraits)
+    on = wiring.portraits(settings(tmp_path, PORTRAIT_API_URL="https://en.wikipedia.org/api/rest_v1"), TUNING, http, FakeClock(), LOGGER)
     assert isinstance(on, CachedPortraits)
     # Built but not asked, as asking would start a download.
-    assert wiring.notables(settings(tmp_path, NOTABLE_AIRCRAFT_URL="https://example.invalid/list.csv"), FakeClock(), LOGGER)
+    assert wiring.notables(settings(tmp_path, NOTABLE_AIRCRAFT_URL="https://example.invalid/list.csv"), TUNING, FakeClock(), LOGGER)

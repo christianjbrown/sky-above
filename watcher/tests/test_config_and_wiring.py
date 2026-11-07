@@ -47,6 +47,8 @@ FULL_ENV = {
     "NOTABLE_AIRCRAFT_URL": "",
     "NOTABLE_CATEGORIES": "Don't you know who I am?, Football,",
     "NOTABLE_NAMES_FILE": "/etc/flights/notable/names.txt",
+    "TUNING_FILE": str(REPO / "tuning" / "tuning.toml"),
+    "TUNING_LOCAL_FILE": "",
     "PORTRAIT_API_URL": "",
 }
 

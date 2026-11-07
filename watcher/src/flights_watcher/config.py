@@ -20,6 +20,7 @@ REQUIRED_KEYS = (
     "TZ",
     "CAST_DEVICE_NAME",
     "CAST_TIMEOUT_SECONDS",
+    "TUNING_FILE",
 )
 # Empty is meaningful for these: no quiet hours, no Cast app yet (log instead of casting),
 # no route service (nothing leaves the house; cards show the flight without its route),
@@ -27,7 +28,8 @@ REQUIRED_KEYS = (
 # a voice that speaks at any hour, routes from adsbdb rather than FlightAware, a cast
 # chime left audible (MUTE_CHIME takes true or false), no followed flights, and no air
 # ambulance or police callsigns to pick out. AEROAPI_PRICES and AEROAPI_UNLISTED_PRICE
-# may only be empty without an AEROAPI_KEY, since a key spends money they count.
+# may only be empty without an AEROAPI_KEY, since a key spends money they count. No
+# TUNING_LOCAL_FILE means the tuning file as it is.
 OPTIONAL_KEYS = (
     "QUIET_HOURS",
     "CAST_APP_ID",
@@ -54,6 +56,7 @@ OPTIONAL_KEYS = (
     "NOTABLE_CATEGORIES",
     "NOTABLE_NAMES_FILE",
     "PORTRAIT_API_URL",
+    "TUNING_LOCAL_FILE",
 )
 
 
@@ -112,6 +115,9 @@ class Settings:
     notable_names_file: str
     # Where pictures of notable aircraft's owners come from (Wikipedia's REST API), or empty for none.
     portrait_api_url: str
+    # The tunings the watcher runs with, and a file of changes to them, which need not exist.
+    tuning_file: str
+    tuning_local_file: str
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "Settings":
@@ -157,6 +163,8 @@ class Settings:
                 notable_categories=tuple(name.strip() for name in env.get("NOTABLE_CATEGORIES", "").split(",") if name.strip()),
                 notable_names_file=env.get("NOTABLE_NAMES_FILE", "").strip(),
                 portrait_api_url=env.get("PORTRAIT_API_URL", "").strip(),
+                tuning_file=env["TUNING_FILE"].strip(),
+                tuning_local_file=env.get("TUNING_LOCAL_FILE", "").strip(),
             )
             if settings.aeroapi_key and not (settings.aeroapi_prices and env.get("AEROAPI_UNLISTED_PRICE", "").strip()):
                 raise ValueError("an AEROAPI_KEY needs AEROAPI_PRICES and AEROAPI_UNLISTED_PRICE to count what it spends")
