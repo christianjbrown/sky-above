@@ -16,6 +16,7 @@ from flights_watcher.speech import (
     AirbusNumbersSaid,
     AnnouncementWording,
     Announcer,
+    BoeingNumbersSaid,
     EndOfShowing,
     QuietVoice,
     SaidAsWords,
@@ -399,4 +400,17 @@ def test_an_airbus_type_is_said_the_way_people_who_fly_them_say_it():
         "E Z Y, Airbus A 3 20 neo, from Geneva.",
         "Airbus A 3 50 1000, Airbus A 2 20 300, Airbus A 3 hundred, Airbus A 3 21 neo",
         "Boeing 737 MAX 8, A3200, BA320",
+    ]
+
+
+def test_a_boeing_type_is_said_a_digit_at_a_time():
+    heard = HeardSynth()
+    voice = BoeingNumbersSaid(heard)
+    assert voice.synthesize("B A W, Boeing 787-9, from Austin.") == b"wav"
+    voice.synthesize("Boeing 737 MAX 8, Boeing 777-300ER, Boeing 747")
+    voice.synthesize("Embraer E175, 7 4 7, 1787, 707A")
+    assert heard.texts == [
+        "B A W, Boeing 7 8 7 9, from Austin.",
+        "Boeing 7 3 7 MAX 8, Boeing 7 7 7 300ER, Boeing 7 4 7",
+        "Embraer E175, 7 4 7, 1787, 707A",
     ]
