@@ -105,6 +105,8 @@ services:
       - AEROAPI_KEY=${AEROAPI_KEY:-}
       - AEROAPI_URL=${AEROAPI_URL:-https://aeroapi.flightaware.com/aeroapi}
       - AEROAPI_MONTHLY_DOLLARS=${AEROAPI_MONTHLY_DOLLARS:-3}
+      - AEROAPI_PRICES=${AEROAPI_PRICES:-flights/*/position=0.010,flights/*=0.005,operators/*=0.015}
+      - AEROAPI_UNLISTED_PRICE=${AEROAPI_UNLISTED_PRICE:-0.200}
       - STATE_DIR=/var/lib/flights/state
       - PHOTO_API_URL=${PHOTO_API_URL:-}
       - LIVE_PORT=${LIVE_PORT:-8091}
