@@ -25,7 +25,7 @@ your TV or smart display shows who it is and where it's headed, and reads it out
 - 🚁 Air ambulance and police helicopters in their own colours, where your country gives them their own callsigns or squawks
 - 🪖 Military aircraft in olive, named by who flies them ("Royal Air Force, Airbus A400M Atlas")
 - 🚨 Planes in an emergency, anywhere your antenna can hear them: squawking 7700, 7600 or 7500, or
-  diving or climbing far faster than any normal flight. They go red, take the screen until it's
+  diving or climbing far faster than any normal flight for most of a minute. They go red, take the screen until it's
   over, and get read out a bit louder
 - 🗺️ A live map of every plane nearby
 - 🏠 Your location never leaves the house

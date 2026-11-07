@@ -276,9 +276,11 @@ FOLLOWED_BUDGET_FILE = "followed-aeroapi.json"
 OVERHEAD_SOON_SECONDS = 10
 # A plane in an emergency counts once its squawk or emergency status has held for this
 # many looks, or its climb or descent, steeper than any departure or arrival, for this
-# many; it is over once this long has passed without a look that showed it.
+# many; it is over once this long has passed without a look that showed it. A plane can
+# start its descent at well over the steep rate for a few seconds, while a real emergency
+# descent keeps it up for minutes, so the steep rate has to hold for most of a minute.
 EMERGENCY_HELD_POLLS = 3
-STEEP_HELD_POLLS = 10
+STEEP_HELD_POLLS = 45
 EMERGENCY_CLEAR_SECONDS = 60
 STEEP_DESCENT_FPM = 6000
 STEEP_CLIMB_FPM = 8000
