@@ -1,11 +1,10 @@
-"""Builds everything the watcher needs from the settings, and holds the tunings it runs with."""
+"""Builds everything the watcher needs from the settings and the tunings it runs with."""
 
 import logging
 import pathlib
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 from flights_watcher.announced import RememberedFlights
@@ -34,7 +33,6 @@ from flights_watcher.estimate import (
     DepartureEstimator,
     EstimatedFollowedFlights,
     RecentBlockTimes,
-    TurnaroundRule,
     TurnaroundsByType,
 )
 from flights_watcher.flightaware import AeroApiOperatorNames, AeroApiRouteLookup, OperatorNames
@@ -53,7 +51,7 @@ from flights_watcher.followed_news import (
     LandingSoon,
     TookOff,
 )
-from flights_watcher.following import FollowedFlights, FollowTiming
+from flights_watcher.following import FollowedFlights
 from flights_watcher.heard import SpeechTiming
 from flights_watcher.http import JsonHttp, UrllibJsonHttp, UrllibTextHttp
 from flights_watcher.live import LatestCard, LiveServer
@@ -107,7 +105,6 @@ from flights_watcher.paths import (
     FirstFound,
     JsonPathStore,
     LearnedPaths,
-    Likeness,
     MissedBefore,
     MissedIt,
     Observing,
@@ -139,190 +136,9 @@ from flights_watcher.speech import (
 )
 from flights_watcher.standby import FollowedStandby, NothingOnStandby
 from flights_watcher.status import AllObservers, DailyTally, HeardSource, WatchStatus
+from flights_watcher.tuning import Tuning
 from flights_watcher.watcher import ArrivalLog, Watcher
 from flights_watcher.zone import Zone
-
-USER_AGENT = "sky-above (personal Nest Hub plane display)"
-LOOKUP_TTL_SECONDS = 6 * 60 * 60
-LOOKUP_CACHE_ENTRIES = 2000
-# How long a callsign whose route lookup failed waits before it is asked about again.
-ROUTE_RETRY_SECONDS = 30
-# Airline names hardly change, and each one asked for is a paid AeroAPI lookup.
-OPERATOR_TTL_SECONDS = 30 * 24 * 60 * 60
-# A callsign with nothing in the air yet may just be a plane whose take-off has not
-# reached FlightAware, so it is asked about again sooner than a known route.
-NO_ROUTE_TTL_SECONDS = 10 * 60
-# Answers kept on disk in STATE_DIR. A route is trusted for a week, or until the
-# timetables change; an airline's name for a year. Past that they are asked for again.
-ANSWERS_FILE = "lookups.sqlite3"
-ROUTE_KEPT_FRESH = timedelta(days=7)
-OPERATOR_KEPT_FRESH = timedelta(days=365)
-# Airlines that write their own flight numbers with the ICAO code: easyJet and its
-# European and Swiss arms all sell and board as EZY, never U2, EC or DS.
-ICAO_NUMBERED_AIRLINES = ("EZY", "EJU", "EZS")
-CAST_RETRY_SECONDS = 30
-# Airports whose city in the route services is not the one people would say, mostly
-# because it is the town the airport stands in, and the airports of cities that have
-# several, which are announced by name ("London Stansted", "Paris Orly") rather than city.
-AIRPORT_CITIES = {
-    "HEL": "Helsinki",
-    "DLM": "Dalaman",
-    "ACE": "Lanzarote",
-    "RHO": "Rhodes",
-    "FRA": "Frankfurt",
-    "GOT": "Göteborg",
-    **dict.fromkeys(("LHR", "LGW", "LCY", "STN", "LTN", "SEN"), "London"),
-    **dict.fromkeys(("CDG", "ORY", "BVA"), "Paris"),
-    **dict.fromkeys(("JFK", "LGA", "EWR"), "New York"),
-    **dict.fromkeys(("IAD", "DCA"), "Washington"),
-    **dict.fromkeys(("ORD", "MDW"), "Chicago"),
-    **dict.fromkeys(("HND", "NRT"), "Tokyo"),
-    **dict.fromkeys(("ICN", "GMP"), "Seoul"),
-    **dict.fromkeys(("PVG", "SHA"), "Shanghai"),
-    **dict.fromkeys(("PEK", "PKX"), "Beijing"),
-    **dict.fromkeys(("BKK", "DMK"), "Bangkok"),
-    **dict.fromkeys(("MXP", "LIN", "BGY"), "Milan"),
-    **dict.fromkeys(("FCO", "CIA"), "Rome"),
-    **dict.fromkeys(("IST", "SAW"), "Istanbul"),
-    **dict.fromkeys(("SVO", "DME", "VKO"), "Moscow"),
-    **dict.fromkeys(("ARN", "BMA", "NYO"), "Stockholm"),
-    **dict.fromkeys(("OSL", "TRF"), "Oslo"),
-    **dict.fromkeys(("GRU", "CGH"), "São Paulo"),
-    **dict.fromkeys(("EZE", "AEP"), "Buenos Aires"),
-}
-NAMED_AIRPORTS = tuple(code for code, city in AIRPORT_CITIES.items() if list(AIRPORT_CITIES.values()).count(city) > 1)
-# How long the Hub stays muted after a launch, so its start-up chime goes unheard.
-CHIME_SECONDS = 3
-SPEECH_TIMEOUT_SECONDS = 15
-# How the announcement's timing goes, for saying where the plane will be when it is heard.
-# Measured on the Pi: Piper reads about 13 characters a second and takes about a third of
-# a clip's length to make it. A card takes about 5 seconds to launch, then the chime mute
-# and the receiver's UNMUTE_SETTLE_MS; on a card already showing, the clip plays within a second.
-SPOKEN_CHARS_PER_SECOND = 13
-CLIP_MAKING_RATIO = 0.33
-CAST_LAUNCH_SECONDS = 5
-UNMUTE_SETTLE_SECONDS = 2
-SHOWING_START_SECONDS = 1
-SPEECH_CLIPS_KEPT = 50
-# An announcement ends "It's overhead now." when the plane will be this close by the time
-# it has been read out.
-OVERHEAD_NOW_KM = 0.5
-# Flights already announced, so one that drops back to second or leaves and returns stays quiet.
-# Longer than any flight is in sight, so a plane is introduced once whatever happens.
-ANNOUNCED_KEPT_FOR = timedelta(hours=6)
-ANNOUNCED_FILE = "announced.json"
-# Other planes are drawn on the map out to this far, which reaches past its edges
-# however far away the plane on the card is. Only the nearest few dozen.
-SURROUNDINGS_KM = 50
-MAX_OTHER_PLANES = 40
-# A plane further out whose straight line passes within the zone is shown and announced
-# on its way in, once its line has held through the zone for this many looks (a second
-# each) without its track turning more than this; a plane mid-turn sweeps its line across
-# home without coming near. Slower than the speed is hovering or taxiing.
-APPROACH_STEADY_POLLS = 5
-APPROACH_STEADY_POLLS_PER_KM = 2
-APPROACH_MAX_TURN_DEG = 3
-APPROACH_MIN_SPEED_KT = 60
-# Once counted, a plane stops counting if it turns enough that its line misses the zone by more than this.
-APPROACH_WANDER_KM = 0.3
-# Further out than this, a plane coming down below this height is being steered in to land.
-STEERED_BELOW_FT = 10000
-STEERED_BEYOND_KM = 10
-DESCENDING_FPM = -300
-# Planes that came within the zone teach the watcher the path they flew there, from as far
-# out as this, a point every couple of seconds. A plane is on one of those paths when it is
-# this near a point on it in place, height and heading. Once it has been on the paths of two
-# earlier planes for three looks in a row it is on its way, turning or not, and is given the
-# time they took from there. A path is forgotten after a few months, as routes change, and
-# only the most recent are kept.
-PATH_KM = 25
-PATH_EVERY_SECONDS = 2
-PATH_GONE_SECONDS = 60
-PATH_LIKENESS = Likeness(within_km=0.5, within_ft=1500, within_deg=15)
-PATH_MIN_PLANES = 2
-PATH_HELD_POLLS = 3
-PATHS_KEPT = 60
-PATH_KEPT_FOR = timedelta(days=90)
-PATHS_FILE = "paths.json"
-# Two planes that looked on their way from the same spot and missed, and none that came over.
-MISSES_MIN = 2
-MISSES_FILE = "missed.json"
-# Planes bound within this many degrees of each other fly the same departure route.
-BOUND_WITHIN = SameWay(within_deg=30)
-# A plane on its way due overhead within this long takes the card at once, rather than
-# waiting for the plane before to finish, so there is still time to launch and announce it.
-APPROACH_DUE_SECONDS = 45
-# Followed flights show from four hours before they are due out until half an hour after
-# they reach the gate. FlightAware is asked every ten minutes while one is on, every five
-# in its last hour before leaving, and for its position in the air every three, unless our
-# own receiver can see it. Each flight costs roughly 100 lookups.
-FOLLOW_TIMING = FollowTiming(
-    lead=timedelta(hours=4),
-    tail=timedelta(minutes=30),
-    before_showing_every=6 * 60 * 60,
-    hours_to_go_every=10 * 60,
-    last_hour_every=5 * 60,
-    under_way_every=10 * 60,
-    earlier_leg_every=10 * 60,
-    position_every=3 * 60,
-    not_found_every=30 * 60,
-)
-# How far behind its timetable a leg has to be before it is called late.
-LATE_MINUTES = 10
-# A followed flight's delay is announced again each time it moves by this much, and once
-# more when it is this close to landing. Its news is handed to the card for long enough
-# to cover a launch.
-DELAY_STEP_MINUTES = 10
-LANDING_SOON = timedelta(minutes=20)
-FOLLOWED_NEWS_KEPT_SECONDS = 60
-# The least time a plane needs on the ground between flights, by size, for our own
-# estimate of when a followed flight can leave. Anything not listed is a narrow-body.
-TURNAROUNDS = TurnaroundsByType(
-    [
-        TurnaroundRule(("A33", "A34", "A35", "A38", "B74", "B76", "B77", "B78", "B79"), timedelta(minutes=75)),
-        TurnaroundRule(("E1", "E7", "CRJ", "AT4", "AT7", "DH8", "SF3", "F70", "J41"), timedelta(minutes=25)),
-    ],
-    timedelta(minutes=35),
-)
-# How long a flight number's recent gate-to-gate times are kept before being asked for again.
-BLOCK_TIMES_KEEP_SECONDS = 6 * 60 * 60
-FOLLOWED_BUDGET_FILE = "followed-aeroapi.json"
-# A plane in the zone this close to its nearest point to home is announced without a time.
-OVERHEAD_SOON_SECONDS = 10
-# A plane in an emergency counts once its squawk or emergency status has held for this
-# many looks, or its climb or descent, steeper than any departure or arrival, for this
-# many; it is over once this long has passed without a look that showed it. A plane can
-# start its descent at well over the steep rate for a few seconds, while a real emergency
-# descent keeps it up for minutes, so the steep rate has to hold for most of a minute.
-EMERGENCY_HELD_POLLS = 3
-STEEP_HELD_POLLS = 45
-EMERGENCY_CLEAR_SECONDS = 60
-STEEP_DESCENT_FPM = 6000
-STEEP_CLIMB_FPM = 8000
-# A steep rate only counts while the altitude has moved at least this share of what the
-# rate says it should have.
-STEEP_ALTITUDE_SHARE = 0.5
-EMERGENCIES_ANNOUNCED_REMEMBERED = 20
-# An air ambulance, police or military aircraft that comes into the zone keeps the card until it is
-# further than this from home.
-SERVICES_KEPT = ("ambulance", "police", "military")
-SERVICE_HOLD_KM = 5
-# The notable aircraft list on the Pi, fetched again once it is this old, and read again
-# this often, so a changed names file is picked up without a restart.
-NOTABLE_FILE = "plane-alert-db.csv"
-NOTABLE_MAX_AGE_SECONDS = 24 * 3600
-NOTABLE_REREAD_SECONDS = 3600
-NOTABLE_TIMEOUT_SECONDS = 60
-# Pictures of notable aircraft's owners are asked for again after a day, or ten minutes
-# after none was found, for this many owners at once.
-PORTRAIT_CACHE_SECONDS = 24 * 3600
-PORTRAIT_RETRY_SECONDS = 600
-PORTRAIT_CACHE_ENTRIES = 200
-# Words in aircraft names the voice gets wrong, and how to write them so it says them
-# right: MAX is said as a word, not spelled out, and ERJ is spelled out, not said as one.
-SAID_AS_WORDS = {"MAX": "Max", "ERJ": "E R J"}
-# Where nginx serves the clip folder, relative to the receiver page.
-SPEECH_URL_PREFIX = "speech/"
 
 
 @dataclass(frozen=True)
@@ -350,23 +166,33 @@ class App:
     status: WatchStatus
 
 
-def build(settings: Settings, clock: Clock, logger: logging.Logger) -> App:
+def build(settings: Settings, tuning: Tuning, clock: Clock, logger: logging.Logger) -> App:
     """Everything the watcher needs, from the settings. Nothing is asked of the network yet."""
-    http = UrllibJsonHttp(USER_AGENT, timeout_seconds=5)
-    found = lookups(settings, http, clock, logger)
+    http = UrllibJsonHttp(tuning.user_agent, timeout_seconds=tuning.http_timeout_seconds)
+    found = lookups(settings, tuning, http, clock, logger)
     # Let through quiet hours, as rare enough to be worth waking up for.
     rare = RareKinds(settings.quiet_hours_except)
-    voice = voices(settings, clock, rare, logger)
+    voice = voices(settings, tuning, clock, rare, logger)
     status = WatchStatus(clock)
-    display, live_server = display_for(settings, status, clock, logger)
+    display, live_server = display_for(settings, tuning, status, clock, logger)
     display = FanOutDisplay([display, EndOfShowing(voice.planes), InterruptedByEmergency(voice.planes)])
     watcher = watcher_for(
-        settings, http, found, voice, display, followed_standby(settings, found, voice, clock, logger), rare, status, clock, logger
+        settings,
+        tuning,
+        http,
+        found,
+        voice,
+        display,
+        followed_standby(settings, tuning, found, voice, clock, logger),
+        rare,
+        status,
+        clock,
+        logger,
     )
     return App(watcher, display, live_server, status)
 
 
-def lookups(settings: Settings, http: JsonHttp, clock: Clock, logger: logging.Logger) -> Lookups:
+def lookups(settings: Settings, tuning: Tuning, http: JsonHttp, clock: Clock, logger: logging.Logger) -> Lookups:
     """Routes and airline names from AeroAPI when there is a key, else from adsbdb, and photos.
     AeroAPI is paid by the lookup, so only planes on the card are asked about; anything
     else goes by the routes already kept. adsbdb is free, so it answers for both."""
@@ -375,105 +201,111 @@ def lookups(settings: Settings, http: JsonHttp, clock: Clock, logger: logging.Lo
     operator_names: OperatorNames | None = None
     if settings.aeroapi_key:
         aeroapi = BudgetedHttp(
-            UrllibJsonHttp(USER_AGENT, timeout_seconds=5, headers={"x-apikey": settings.aeroapi_key}),
-            MonthlyBudget(settings.aeroapi_monthly_dollars, pathlib.Path(settings.state_dir) / "aeroapi.json", clock),
+            UrllibJsonHttp(tuning.user_agent, timeout_seconds=tuning.http_timeout_seconds, headers={"x-apikey": settings.aeroapi_key}),
+            MonthlyBudget(settings.aeroapi_monthly_dollars, pathlib.Path(settings.state_dir) / tuning.aeroapi_budget_file, clock),
             PricedByPath(settings.aeroapi_url, settings.aeroapi_prices, settings.aeroapi_unlisted_price),
         )
-        answers = str(pathlib.Path(settings.state_dir) / ANSWERS_FILE)
+        answers = str(pathlib.Path(settings.state_dir) / tuning.answers_file)
         known_routes = KeptRouteLookup(SqliteAnswerStore(answers, "route", logger))
         operator_names = CachedOperatorNames(
             RememberedOperatorNames(
                 AeroApiOperatorNames(settings.aeroapi_url, aeroapi),
-                Memory(SqliteAnswerStore(answers, "operator", logger), YoungerThan(OPERATOR_KEPT_FRESH), clock, logger),
+                Memory(SqliteAnswerStore(answers, "operator", logger), YoungerThan(tuning.operator_kept_fresh), clock, logger),
             ),
-            TtlCache(clock, OPERATOR_TTL_SECONDS, LOOKUP_CACHE_ENTRIES),
+            TtlCache(clock, tuning.operator_ttl_seconds, tuning.lookup_cache_entries),
         )
         routes = CachedRouteLookup(
             RememberedRouteLookup(
-                AeroApiRouteLookup(settings.aeroapi_url, aeroapi, operator_names, ICAO_NUMBERED_AIRLINES),
+                AeroApiRouteLookup(settings.aeroapi_url, aeroapi, operator_names, tuning.icao_numbered_airlines),
                 Memory(
                     SqliteAnswerStore(answers, "route", logger),
-                    AllFresh([YoungerThan(ROUTE_KEPT_FRESH), SameTimetable()]),
+                    AllFresh([YoungerThan(tuning.route_kept_fresh), SameTimetable()]),
                     clock,
                     logger,
                 ),
             ),
-            TtlCache(clock, LOOKUP_TTL_SECONDS, LOOKUP_CACHE_ENTRIES, NO_ROUTE_TTL_SECONDS),
+            TtlCache(clock, tuning.lookup_ttl_seconds, tuning.lookup_cache_entries, tuning.no_route_ttl_seconds),
         )
     elif settings.route_api_url:
         routes = CachedRouteLookup(
-            AdsbdbRouteLookup(settings.route_api_url, http), TtlCache(clock, LOOKUP_TTL_SECONDS, LOOKUP_CACHE_ENTRIES)
+            AdsbdbRouteLookup(settings.route_api_url, http), TtlCache(clock, tuning.lookup_ttl_seconds, tuning.lookup_cache_entries)
         )
-    airport_tidiers: list[AirportTidier] = [AirportCities(AIRPORT_CITIES), AirportCountries.bundled(), AirportPlaces.bundled()]
+    airport_tidiers: list[AirportTidier] = [AirportCities(tuning.airport_cities), AirportCountries.bundled(), AirportPlaces.bundled()]
     photos: PhotoLookup = NoPhotos()
     if settings.photo_api_url:
         photos = CachedPhotoLookup(
-            PlanespottersPhotoLookup(settings.photo_api_url, http), TtlCache(clock, LOOKUP_TTL_SECONDS, LOOKUP_CACHE_ENTRIES)
+            PlanespottersPhotoLookup(settings.photo_api_url, http), TtlCache(clock, tuning.lookup_ttl_seconds, tuning.lookup_cache_entries)
         )
-    tidied = TidiedRoutes(RetryLater(routes, clock, ROUTE_RETRY_SECONDS), airport_tidiers)
+    tidied = TidiedRoutes(RetryLater(routes, clock, tuning.route_retry_seconds), airport_tidiers)
     known = TidiedRoutes(known_routes, airport_tidiers) if known_routes else tidied
     return Lookups(tidied, known, photos, operator_names, airport_tidiers)
 
 
-def voices(settings: Settings, clock: Clock, rare: RareKinds, logger: logging.Logger) -> Voices:
+def voices(settings: Settings, tuning: Tuning, clock: Clock, rare: RareKinds, logger: logging.Logger) -> Voices:
     """Spoken announcements when there is a speech server, silence otherwise."""
     if settings.speech_server is None:
         return Voices(Silence(), Silence(), Silence())
     host, port = settings.speech_server
-    launch_start = CAST_LAUNCH_SECONDS + (CHIME_SECONDS + UNMUTE_SETTLE_SECONDS if settings.mute_chime else 0)
+    launch_start = tuning.cast_launch_seconds + (tuning.chime_seconds + tuning.unmute_settle_seconds if settings.mute_chime else 0)
     clips = SpeechClips(
         pathlib.Path(settings.speech_dir),
-        SPEECH_URL_PREFIX,
-        SPEECH_CLIPS_KEPT,
-        SaidAsWords(BoeingNumbersSaid(AirbusNumbersSaid(WyomingSpeech(host, port, SPEECH_TIMEOUT_SECONDS))), SAID_AS_WORDS),
+        tuning.speech_url_prefix,
+        tuning.speech_clips_kept,
+        SaidAsWords(BoeingNumbersSaid(AirbusNumbersSaid(WyomingSpeech(host, port, tuning.speech_timeout_seconds))), tuning.said_as_words),
     )
-    wording = AnnouncementWording(NAMED_AIRPORTS, SpokenWhereabouts(settings.home))
+    wording = AnnouncementWording(tuning.named_airports, SpokenWhereabouts(settings.home))
     announcer = Announcer(
         wording,
-        SpokenArrival(settings.home, OVERHEAD_NOW_KM),
-        SpeechTiming(SPOKEN_CHARS_PER_SECOND, CLIP_MAKING_RATIO, launch_start, SHOWING_START_SECONDS),
+        SpokenArrival(settings.home, tuning.overhead_now_km),
+        SpeechTiming(tuning.spoken_chars_per_second, tuning.clip_making_ratio, launch_start, tuning.showing_start_seconds),
         clips,
-        RememberedFlights(pathlib.Path(settings.state_dir) / ANNOUNCED_FILE, ANNOUNCED_KEPT_FOR, clock, logger),
+        RememberedFlights(pathlib.Path(settings.state_dir) / tuning.announced_file, tuning.announced_kept_for, clock, logger),
         logger,
     )
     quiet_hours = QuietHours.parse(settings.speech_quiet_hours)
     return Voices(
         QuietVoice(announcer, quiet_hours, clock, rare),
-        QuietVoice(FollowedAnnouncer(clips, FOLLOWED_NEWS_KEPT_SECONDS, clock, logger), quiet_hours, clock, rare),
+        QuietVoice(FollowedAnnouncer(clips, tuning.followed_news_kept_seconds, clock, logger), quiet_hours, clock, rare),
         # Heard at any hour.
-        EmergencyAnnouncer(EmergencyWording(wording, SpokenWhereabouts(settings.home)), clips, EMERGENCIES_ANNOUNCED_REMEMBERED, logger),
+        EmergencyAnnouncer(
+            EmergencyWording(wording, SpokenWhereabouts(settings.home)), clips, tuning.emergencies_announced_remembered, logger
+        ),
     )
 
 
 def followed_standby(
-    settings: Settings, found: Lookups, voice: Voices, clock: Clock, logger: logging.Logger
+    settings: Settings, tuning: Tuning, found: Lookups, voice: Voices, clock: Clock, logger: logging.Logger
 ) -> FollowedStandby | NothingOnStandby:
     """Followed flights need AeroAPI and a list of them; without both, nothing waits on standby."""
     if found.operator_names is None or not settings.followed_file:
         return NothingOnStandby()
     # Its own monthly cap, so a busy sky cannot use up the lookups a followed flight needs.
     followed_http = BudgetedHttp(
-        UrllibJsonHttp(USER_AGENT, timeout_seconds=5, headers={"x-apikey": settings.aeroapi_key}),
-        MonthlyBudget(settings.followed_monthly_dollars, pathlib.Path(settings.state_dir) / FOLLOWED_BUDGET_FILE, clock),
+        UrllibJsonHttp(tuning.user_agent, timeout_seconds=tuning.http_timeout_seconds, headers={"x-apikey": settings.aeroapi_key}),
+        MonthlyBudget(settings.followed_monthly_dollars, pathlib.Path(settings.state_dir) / tuning.followed_budget_file, clock),
         PricedByPath(settings.aeroapi_url, settings.aeroapi_prices, settings.aeroapi_unlisted_price),
     )
     schedules = AeroApiSchedules(settings.aeroapi_url, followed_http)
     timezone = ZoneInfo(settings.timezone)
     return FollowedStandby(
         EstimatedFollowedFlights(
-            FollowedFlights(FollowedListFile(pathlib.Path(settings.followed_file), logger), schedules, FOLLOW_TIMING, clock, logger),
-            DepartureEstimator(RecentBlockTimes(schedules, BLOCK_TIMES_KEEP_SECONDS, clock, logger), TURNAROUNDS, clock),
+            FollowedFlights(FollowedListFile(pathlib.Path(settings.followed_file), logger), schedules, tuning.follow_timing, clock, logger),
+            DepartureEstimator(
+                RecentBlockTimes(schedules, tuning.block_times_kept_seconds, clock, logger),
+                TurnaroundsByType(tuning.turnarounds, tuning.default_turnaround),
+                clock,
+            ),
         ),
         AnnouncedFollowedCards(
-            FollowedCardBuilder(settings.timezone, found.airport_tidiers, found.operator_names, LATE_MINUTES, logger),
+            FollowedCardBuilder(settings.timezone, found.airport_tidiers, found.operator_names, tuning.late_minutes, logger),
             FollowedNews(
                 [
                     Cancelled(),
                     Diverted(),
-                    DelayMoved(LATE_MINUTES, DELAY_STEP_MINUTES, timezone),
+                    DelayMoved(tuning.late_minutes, tuning.delay_step_minutes, timezone),
                     GateChanged(),
                     TookOff(timezone),
-                    LandingSoon(LANDING_SOON),
+                    LandingSoon(tuning.landing_soon),
                     Landed(),
                     BeltChanged(),
                 ],
@@ -485,7 +317,9 @@ def followed_standby(
     )
 
 
-def display_for(settings: Settings, status: WatchStatus, clock: Clock, logger: logging.Logger) -> tuple[Display, LiveServer | None]:
+def display_for(
+    settings: Settings, tuning: Tuning, status: WatchStatus, clock: Clock, logger: logging.Logger
+) -> tuple[Display, LiveServer | None]:
     """The Cast device when there is an app to cast, else the log; and the live page if it has a port."""
     display: Display
     if settings.cast_app_id:
@@ -495,8 +329,8 @@ def display_for(settings: Settings, status: WatchStatus, clock: Clock, logger: l
             settings.cast_timeout_seconds,
             logger,
         )
-        hub: CastDevice = MutedLaunchDevice(chromecast, CHIME_SECONDS, time.sleep) if settings.mute_chime else chromecast
-        display = CastDisplay(CoolingOffDevice(hub, clock, CAST_RETRY_SECONDS, logger), settings.cast_app_id, logger)
+        hub: CastDevice = MutedLaunchDevice(chromecast, tuning.chime_seconds, time.sleep) if settings.mute_chime else chromecast
+        display = CastDisplay(CoolingOffDevice(hub, clock, tuning.cast_retry_seconds, logger), settings.cast_app_id, logger)
     else:
         logger.info("CAST_APP_ID is empty, so planes are logged rather than cast")
         display = LoggingDisplay(logger)
@@ -504,7 +338,7 @@ def display_for(settings: Settings, status: WatchStatus, clock: Clock, logger: l
     if settings.live_port is not None:
         latest = LatestCard()
         # All interfaces, so the receiver container can reach it through the host.
-        live_server = LiveServer({"/planes.json": latest, "/status.json": status}, "0.0.0.0", settings.live_port, logger)  # noqa: S104
+        live_server = LiveServer({"/planes.json": latest, "/status.json": status}, tuning.live_host, settings.live_port, logger)
         display = FanOutDisplay([display, latest])
     # Lets the card leave the flag off places in home's own country. Near a border the
     # nearest airport can be in the next country, so HOME_COUNTRY says for sure.
@@ -514,15 +348,15 @@ def display_for(settings: Settings, status: WatchStatus, clock: Clock, logger: l
     return Stamped(display, {"homeCountry": home_country}), live_server
 
 
-def notables(settings: Settings, clock: Clock, logger: logging.Logger) -> NotableFinder:
+def notables(settings: Settings, tuning: Tuning, clock: Clock, logger: logging.Logger) -> NotableFinder:
     """Who notable aircraft belong to, from plane-alert-db and the names file. Both are
     read on work of their own, so a slow download never holds up a card."""
     table = (
         MirroredText(
             settings.notable_aircraft_url,
-            pathlib.Path(settings.state_dir) / NOTABLE_FILE,
-            NOTABLE_MAX_AGE_SECONDS,
-            UrllibTextHttp(USER_AGENT, NOTABLE_TIMEOUT_SECONDS),
+            pathlib.Path(settings.state_dir) / tuning.notable_file,
+            tuning.notable_max_age_seconds,
+            UrllibTextHttp(tuning.user_agent, tuning.notable_timeout_seconds),
             clock,
             logger,
         )
@@ -533,23 +367,26 @@ def notables(settings: Settings, clock: Clock, logger: logging.Logger) -> Notabl
     starter = ThreadStarter()
     return NotableAircraft(
         InBackground(
-            lambda: plane_alert_table(table.text() or "", settings.notable_categories), {}, clock, NOTABLE_REREAD_SECONDS, starter
+            lambda: plane_alert_table(table.text() or "", settings.notable_categories), {}, clock, tuning.notable_reread_seconds, starter
         ),
-        InBackground(lambda: owner_names(names.text() or ""), {}, clock, NOTABLE_REREAD_SECONDS, starter),
+        InBackground(lambda: owner_names(names.text() or ""), {}, clock, tuning.notable_reread_seconds, starter),
     )
 
 
-def portraits(settings: Settings, http: JsonHttp, clock: Clock, logger: logging.Logger) -> PortraitLookup:
+def portraits(settings: Settings, tuning: Tuning, http: JsonHttp, clock: Clock, logger: logging.Logger) -> PortraitLookup:
     """Pictures of who notable aircraft belong to, from Wikipedia, asked about only when
     one gets a card."""
     if not settings.portrait_api_url:
         return NoPortraits()
-    cache: TtlCache[str | None] = TtlCache(clock, PORTRAIT_CACHE_SECONDS, PORTRAIT_CACHE_ENTRIES, PORTRAIT_RETRY_SECONDS)
+    cache: TtlCache[str | None] = TtlCache(
+        clock, tuning.portrait_cache_seconds, tuning.portrait_cache_entries, tuning.portrait_retry_seconds
+    )
     return CachedPortraits(WikipediaPortraits(settings.portrait_api_url, http), cache, logger)
 
 
 def watcher_for(
     settings: Settings,
+    tuning: Tuning,
     http: JsonHttp,
     found: Lookups,
     voice: Voices,
@@ -574,22 +411,30 @@ def watcher_for(
             MilitaryService(),
         ]
     )
-    closest = ClosestApproach(settings.home, APPROACH_MIN_SPEED_KT)
+    closest = ClosestApproach(settings.home, tuning.approach_min_speed_kt)
     paths = LearnedPaths(
-        JsonPathStore(pathlib.Path(settings.state_dir) / PATHS_FILE, logger), PATH_LIKENESS, PATHS_KEPT, PATH_KEPT_FOR, clock
+        JsonPathStore(pathlib.Path(settings.state_dir) / tuning.paths_file, logger),
+        tuning.path_likeness,
+        tuning.paths_kept,
+        tuning.path_kept_for,
+        clock,
     )
     bound = DestinationBound(found.known_routes, settings.home, logger)
     misses = LearnedPaths(
-        JsonPathStore(pathlib.Path(settings.state_dir) / MISSES_FILE, logger), PATH_LIKENESS, PATHS_KEPT, PATH_KEPT_FOR, clock
+        JsonPathStore(pathlib.Path(settings.state_dir) / tuning.misses_file, logger),
+        tuning.path_likeness,
+        tuning.paths_kept,
+        tuning.path_kept_for,
+        clock,
     )
     recorder = PathRecorder(
         [CameOverhead(paths, bound, zone.radius_km, logger), MissedIt(misses, bound, zone.radius_km, logger)],
         closest,
         settings.home,
         zone.radius_km,
-        PATH_KM,
-        PATH_EVERY_SECONDS,
-        PATH_GONE_SECONDS,
+        tuning.path_km,
+        tuning.path_every_seconds,
+        tuning.path_gone_seconds,
         clock,
     )
     approaching = FirstFound(
@@ -598,23 +443,31 @@ def watcher_for(
                 closest,
                 settings.home,
                 zone.radius_km,
-                APPROACH_STEADY_POLLS,
-                APPROACH_STEADY_POLLS_PER_KM,
-                APPROACH_MAX_TURN_DEG,
-                APPROACH_WANDER_KM,
+                tuning.approach_steady_polls,
+                tuning.approach_steady_polls_per_km,
+                tuning.approach_max_turn_deg,
+                tuning.approach_wander_km,
                 [
                     LandsFirst(),
-                    SteeredIn(STEERED_BELOW_FT, STEERED_BEYOND_KM, DESCENDING_FPM),
-                    MissedBefore(misses, paths, bound, BOUND_WITHIN, MISSES_MIN),
+                    SteeredIn(tuning.steered_below_ft, tuning.steered_beyond_km, tuning.descending_fpm),
+                    MissedBefore(misses, paths, bound, SameWay(tuning.bound_within_deg), tuning.misses_min),
                 ],
             ),
-            PathFinder(paths, bound, BOUND_WITHIN, settings.home, zone.radius_km, PATH_MIN_PLANES, PATH_HELD_POLLS),
+            PathFinder(
+                paths,
+                bound,
+                SameWay(tuning.bound_within_deg),
+                settings.home,
+                zone.radius_km,
+                tuning.path_min_planes,
+                tuning.path_held_polls,
+            ),
         ]
     )
     cards = OwnedCards(
         CardBuilder(found.routes, found.photos, AircraftNames(), services, logger),
-        notables(settings, clock, logger),
-        portraits(settings, http, clock, logger),
+        notables(settings, tuning, clock, logger),
+        portraits(settings, tuning, http, clock, logger),
     )
 
     def planes_message(speech: QuietVoice | Silence) -> PlanesMessageBuilder:
@@ -624,19 +477,19 @@ def watcher_for(
             settings.home,
             zone.radius_km,
             settings.max_cards,
-            Zone(settings.home, SURROUNDINGS_KM),
-            MAX_OTHER_PLANES,
+            Zone(settings.home, tuning.surroundings_km),
+            tuning.max_other_planes,
             services,
         )
 
     emergencies = FirstEmergencies(
         [
-            HeldEmergencies(DeclaredEmergency(), settings.home, EMERGENCY_HELD_POLLS, EMERGENCY_CLEAR_SECONDS, clock),
+            HeldEmergencies(DeclaredEmergency(), settings.home, tuning.emergency_held_polls, tuning.emergency_clear_seconds, clock),
             HeldEmergencies(
-                AltitudeBearsOut(SteepClimbOrDescent(STEEP_DESCENT_FPM, STEEP_CLIMB_FPM), clock, STEEP_ALTITUDE_SHARE),
+                AltitudeBearsOut(SteepClimbOrDescent(tuning.steep_descent_fpm, tuning.steep_climb_fpm), clock, tuning.steep_altitude_share),
                 settings.home,
-                STEEP_HELD_POLLS,
-                EMERGENCY_CLEAR_SECONDS,
+                tuning.steep_held_polls,
+                tuning.emergency_clear_seconds,
                 clock,
             ),
         ]
@@ -644,11 +497,11 @@ def watcher_for(
     return Watcher(
         source=HeardSource(KnownRotorcraft.bundled(Tar1090AircraftSource(settings.aircraft_url, http)), status),
         zone=ServicesStay(
-            OverheadAndApproaching(zone, Observing(recorder, approaching), closest, OVERHEAD_SOON_SECONDS),
+            OverheadAndApproaching(zone, Observing(recorder, approaching), closest, tuning.overhead_soon_seconds),
             services,
-            SERVICES_KEPT,
+            tuning.services_kept,
             settings.home,
-            SERVICE_HOLD_KM,
+            tuning.service_hold_km,
         ),
         messages=planes_message(voice.planes),
         display=display,
@@ -657,8 +510,8 @@ def watcher_for(
         arrivals=AllObservers([ArrivalLog(logger), DailyTally(status, clock, logger)]),
         clock=clock,
         standby=standby,
-        due_seconds=APPROACH_DUE_SECONDS,
-        surroundings=Zone(settings.home, SURROUNDINGS_KM),
+        due_seconds=tuning.approach_due_seconds,
+        surroundings=Zone(settings.home, tuning.surroundings_km),
         rare=rare,
         emergencies=EmergencyAlert(emergencies, EmergencyMessages(planes_message(Silence()), voice.emergency), EmergencyLog(logger)),
     )

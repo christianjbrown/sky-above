@@ -10,6 +10,8 @@ own-logos/
 followed/
 # Who notable aircraft belong to, kept by hand on the Pi.
 notable/
+# Changes to tuning/tuning.toml, kept by hand on the Pi.
+tuning/local.toml
 # Test tooling.
 node_modules/
 coverage/

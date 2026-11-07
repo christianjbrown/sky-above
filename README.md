@@ -312,6 +312,27 @@ downloads a new voice the first time it's used.
 
 `.env.example` lists the rest, with a note on each.
 
+### Fine tuning 🎛️
+
+Everything else about how it behaves lives in `tuning/tuning.toml`: how long answers are kept, how
+sure it has to be that a plane is on its way, how often a followed flight is checked, which
+airports are said by city, how a word like MAX is pronounced, and so on. Each value has a note
+saying what it does.
+
+Don't edit that file, though, because the Pi updates itself from git and your changes would get in
+the way. Put just what you want changed in `tuning/local.toml` instead, under the same headings:
+
+```toml
+[map]
+max_other_planes = 20
+
+[airports.cities]
+Madrid = ["MAD"]
+```
+
+Then run `docker compose up -d watcher`. A list replaces the whole list, and a misspelt name stops
+the watcher with a message saying which one, so nothing gets quietly ignored. 🧐
+
 ## For the curious 🔍
 
 <details>

@@ -1,0 +1,235 @@
+# How the watcher behaves, beyond the settings in .env that differ from one home to the
+# next. Every value here is read at start-up and must be present; a missing, misspelt or
+# mistyped one stops the watcher with a message saying which.
+#
+# To change something, don't edit this file: put just the keys you want to change, under
+# the same [section] headings, in tuning/local.toml next to it, and run
+# `docker compose up -d watcher`. local.toml is yours and git never touches it, so the
+# Pi keeps updating itself. A list in local.toml replaces the whole list here.
+
+[http]
+# How the watcher names itself to the services it asks, and how long it waits for each.
+user_agent = "sky-above (personal Nest Hub plane display)"
+timeout_seconds = 5
+
+[lookups]
+# Routes and photos are kept in memory this long, for up to this many planes.
+ttl_hours = 6
+cache_entries = 2000
+# How long a callsign whose route lookup failed waits before it is asked about again.
+route_retry_seconds = 30
+# Airline names hardly change, and each one asked for is a paid AeroAPI lookup.
+operator_ttl_days = 30
+# A callsign with nothing in the air yet may just be a plane whose take-off has not
+# reached FlightAware, so it is asked about again sooner than a known route.
+no_route_ttl_minutes = 10
+# Answers kept on disk in STATE_DIR. A route is trusted for a week, or until the
+# timetables change; an airline's name for a year. Past that they are asked for again.
+route_kept_fresh_days = 7
+operator_kept_fresh_days = 365
+# Airlines that write their own flight numbers with the ICAO code: easyJet and its
+# European and Swiss arms all sell and board as EZY, never U2, EC or DS.
+icao_numbered_airlines = ["EZY", "EJU", "EZS"]
+
+[state]
+# The files the watcher keeps in STATE_DIR. Renaming one starts it afresh.
+answers_file = "lookups.sqlite3"
+aeroapi_budget_file = "aeroapi.json"
+followed_budget_file = "followed-aeroapi.json"
+announced_file = "announced.json"
+paths_file = "paths.json"
+misses_file = "missed.json"
+notable_file = "plane-alert-db.csv"
+
+[airports.cities]
+# Airports whose city in the route services is not the one people would say, mostly
+# because it is the town the airport stands in, and the airports of cities that have
+# several, which are announced by name ("London Stansted", "Paris Orly") rather than city.
+Helsinki = ["HEL"]
+Dalaman = ["DLM"]
+Lanzarote = ["ACE"]
+Rhodes = ["RHO"]
+Frankfurt = ["FRA"]
+"Göteborg" = ["GOT"]
+London = ["LHR", "LGW", "LCY", "STN", "LTN", "SEN"]
+Paris = ["CDG", "ORY", "BVA"]
+"New York" = ["JFK", "LGA", "EWR"]
+Washington = ["IAD", "DCA"]
+Chicago = ["ORD", "MDW"]
+Tokyo = ["HND", "NRT"]
+Seoul = ["ICN", "GMP"]
+Shanghai = ["PVG", "SHA"]
+Beijing = ["PEK", "PKX"]
+Bangkok = ["BKK", "DMK"]
+Milan = ["MXP", "LIN", "BGY"]
+Rome = ["FCO", "CIA"]
+Istanbul = ["IST", "SAW"]
+Moscow = ["SVO", "DME", "VKO"]
+Stockholm = ["ARN", "BMA", "NYO"]
+Oslo = ["OSL", "TRF"]
+"São Paulo" = ["GRU", "CGH"]
+"Buenos Aires" = ["EZE", "AEP"]
+
+[cast]
+# How long the Hub is left alone after a cast fails, before it is tried again.
+retry_seconds = 30
+# How long the Hub stays muted after a launch, so its start-up chime goes unheard.
+chime_seconds = 3
+# About how long a card takes to launch on the Hub.
+launch_seconds = 5
+
+[live]
+# Where the live card listens. All interfaces, so the receiver container can reach it
+# through the host.
+host = "0.0.0.0"
+
+[speech]
+timeout_seconds = 15
+# How the announcement's timing goes, for saying where the plane will be when it is heard.
+# Measured on the Pi: Piper reads about 13 characters a second and takes about a third of
+# a clip's length to make it. A new card launches, then waits out the chime mute and the
+# receiver's UNMUTE_SETTLE_MS; on a card already showing, the clip plays within a second.
+spoken_chars_per_second = 13
+clip_making_ratio = 0.33
+unmute_settle_seconds = 2
+showing_start_seconds = 1
+clips_kept = 50
+# An announcement ends "It's overhead now." when the plane will be this close by the time
+# it has been read out.
+overhead_now_km = 0.5
+# Flights already announced, so one that drops back to second or leaves and returns stays
+# quiet. Longer than any flight is in sight, so a plane is introduced once whatever happens.
+announced_kept_hours = 6
+# Where nginx serves the clip folder, relative to the receiver page.
+url_prefix = "speech/"
+
+[speech.said_as]
+# Words in aircraft names the voice gets wrong, and how to write them so it says them
+# right: MAX is said as a word, not spelled out, and ERJ is spelled out, not said as one.
+MAX = "Max"
+ERJ = "E R J"
+
+[map]
+# Other planes are drawn on the map out to this far, which reaches past its edges
+# however far away the plane on the card is. Only the nearest few dozen.
+surroundings_km = 50
+max_other_planes = 40
+
+[approach]
+# A plane further out whose straight line passes within the zone is shown and announced
+# on its way in, once its line has held through the zone for this many looks (a second
+# each), plus this many for each km it is away, without its track turning more than this;
+# a plane mid-turn sweeps its line across home without coming near. Slower than the
+# speed is hovering or taxiing.
+steady_polls = 5
+steady_polls_per_km = 2
+max_turn_deg = 3
+min_speed_kt = 60
+# Once counted, a plane stops counting if it turns enough that its line misses the zone
+# by more than this.
+wander_km = 0.3
+# Further out than this, a plane coming down below this height is being steered in to land.
+steered_below_ft = 10000
+steered_beyond_km = 10
+descending_fpm = -300
+# Planes bound within this many degrees of each other fly the same departure route.
+bound_within_deg = 30
+# A plane on its way due overhead within this long takes the card at once, rather than
+# waiting for the plane before to finish, so there is still time to launch and announce it.
+due_seconds = 45
+# A plane in the zone this close to its nearest point to home is announced without a time.
+overhead_soon_seconds = 10
+
+[paths]
+# Planes that came within the zone teach the watcher the path they flew there, from as far
+# out as this, a point every couple of seconds, until a plane has been gone this long. A
+# plane is on one of those paths when it is this near a point on it in place, height and
+# heading. Once it has been on the paths of two earlier planes for three looks in a row it
+# is on its way, turning or not, and is given the time they took from there. A path is
+# forgotten after a few months, as routes change, and only the most recent are kept.
+km = 25
+every_seconds = 2
+gone_seconds = 60
+within_km = 0.5
+within_ft = 1500
+within_deg = 15
+min_planes = 2
+held_polls = 3
+kept = 60
+kept_days = 90
+# Two planes that looked on their way from the same spot and missed, and none that came
+# over, and a plane from there is no longer taken to be on its way.
+misses_min = 2
+
+[followed]
+# Followed flights show from four hours before they are due out until half an hour after
+# they reach the gate. FlightAware is asked every ten minutes while one is on, every five
+# in its last hour before leaving, and for its position in the air every three, unless our
+# own receiver can see it.
+lead_hours = 4
+tail_minutes = 30
+before_showing_every_minutes = 360
+hours_to_go_every_minutes = 10
+last_hour_every_minutes = 5
+under_way_every_minutes = 10
+earlier_leg_every_minutes = 10
+position_every_minutes = 3
+not_found_every_minutes = 30
+# How far behind its timetable a leg has to be before it is called late.
+late_minutes = 10
+# A followed flight's delay is announced again each time it moves by this much, and once
+# more when it is this close to landing. Its news is handed to the card for long enough
+# to cover a launch.
+delay_step_minutes = 10
+landing_soon_minutes = 20
+news_kept_seconds = 60
+# How long a flight number's recent gate-to-gate times are kept before being asked for again.
+block_times_kept_hours = 6
+# The least time a plane needs on the ground between flights, by size, for our own
+# estimate of when a followed flight can leave: types starting with any of these, and
+# anything not listed, a narrow-body.
+default_turnaround_minutes = 35
+
+[[followed.turnarounds]]
+types = ["A33", "A34", "A35", "A38", "B74", "B76", "B77", "B78", "B79"]
+minutes = 75
+
+[[followed.turnarounds]]
+types = ["E1", "E7", "CRJ", "AT4", "AT7", "DH8", "SF3", "F70", "J41"]
+minutes = 25
+
+[emergency]
+# A plane in an emergency counts once its squawk or emergency status has held for this
+# many looks, or its climb or descent, steeper than any departure or arrival, for this
+# many; it is over once this long has passed without a look that showed it. A plane can
+# start its descent at well over the steep rate for a few seconds, while a real emergency
+# descent keeps it up for minutes, so the steep rate has to hold for most of a minute.
+held_polls = 3
+steep_held_polls = 45
+clear_seconds = 60
+steep_descent_fpm = 6000
+steep_climb_fpm = 8000
+# A steep rate only counts while the altitude has moved at least this share of what the
+# rate says it should have.
+steep_altitude_share = 0.5
+announced_remembered = 20
+
+[services]
+# An air ambulance, police or military aircraft that comes into the zone keeps the card
+# until it is further than this from home.
+kept = ["ambulance", "police", "military"]
+hold_km = 5
+
+[notable]
+# The notable aircraft list, fetched again once it is this old, and read again this
+# often, so a changed names file is picked up without a restart.
+max_age_hours = 24
+reread_minutes = 60
+timeout_seconds = 60
+
+[portraits]
+# Pictures of notable aircraft's owners are asked for again after a day, or ten minutes
+# after none was found, for this many owners at once.
+cache_hours = 24
+retry_minutes = 10
+cache_entries = 200
