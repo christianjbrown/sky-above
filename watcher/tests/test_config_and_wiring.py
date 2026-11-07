@@ -1,3 +1,4 @@
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -30,11 +31,11 @@ FULL_ENV = {
     "SPEECH_QUIET_HOURS": "00:00-10:00",
     "AEROAPI_KEY": "",
     "AEROAPI_URL": "https://aeroapi.flightaware.com/aeroapi",
-    "AEROAPI_MONTHLY_LIMIT": "1000",
+    "AEROAPI_MONTHLY_DOLLARS": "3",
     "STATE_DIR": "/var/lib/flights/state",
     "MUTE_CHIME": "true",
     "FOLLOWED_FILE": "/etc/flights/followed/flights.txt",
-    "FOLLOWED_MONTHLY_LIMIT": "600",
+    "FOLLOWED_MONTHLY_DOLLARS": "1.50",
     "AIR_AMBULANCE_CALLSIGNS": "hle, xyz",
     "POLICE_CALLSIGNS": "UKP",
     "AIR_AMBULANCE_SQUAWKS": "0020",
@@ -56,10 +57,10 @@ def test_settings_read_every_value():
     assert settings.live_port == 8091
     assert settings.speech_server == ("localhost", 10200)
     assert settings.speech_quiet_hours == "00:00-10:00"
-    assert settings.aeroapi_monthly_limit == 1000
+    assert settings.aeroapi_monthly_dollars == Decimal(3)
     assert settings.mute_chime
     assert settings.followed_file == "/etc/flights/followed/flights.txt"
-    assert settings.followed_monthly_limit == 600
+    assert settings.followed_monthly_dollars == Decimal("1.50")
     assert settings.air_ambulance_callsigns == ("HLE", "XYZ")
     assert settings.police_callsigns == ("UKP",)
     assert settings.air_ambulance_squawks == ("0020",)
@@ -91,6 +92,14 @@ def test_missing_or_bad_settings_are_named():
     assert Settings.from_env({**FULL_ENV, "ROUTE_API_URL": ""}).route_api_url == ""
     with pytest.raises(ConfigError, match="bad setting"):
         Settings.from_env({**FULL_ENV, "ZONE_RADIUS_KM": "three"})
+
+
+def test_monthly_dollars_are_amounts_of_money():
+    assert Settings.from_env({**FULL_ENV, "AEROAPI_MONTHLY_DOLLARS": ""}).aeroapi_monthly_dollars == 0
+    assert Settings.from_env({**FULL_ENV, "FOLLOWED_MONTHLY_DOLLARS": " 0.75 "}).followed_monthly_dollars == Decimal("0.75")
+    for bad in ("lots", "-1", "NaN", "Infinity"):
+        with pytest.raises(ConfigError, match="AEROAPI_MONTHLY_DOLLARS should be an amount of dollars"):
+            Settings.from_env({**FULL_ENV, "AEROAPI_MONTHLY_DOLLARS": bad})
 
 
 def test_muting_the_chime_is_a_switch():

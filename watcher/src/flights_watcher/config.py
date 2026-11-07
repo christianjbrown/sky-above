@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 
 from flights_watcher.geo import Location
 from flights_watcher.rare import KINDS
@@ -37,11 +38,11 @@ OPTIONAL_KEYS = (
     "SPEECH_QUIET_HOURS",
     "AEROAPI_KEY",
     "AEROAPI_URL",
-    "AEROAPI_MONTHLY_LIMIT",
+    "AEROAPI_MONTHLY_DOLLARS",
     "STATE_DIR",
     "MUTE_CHIME",
     "FOLLOWED_FILE",
-    "FOLLOWED_MONTHLY_LIMIT",
+    "FOLLOWED_MONTHLY_DOLLARS",
     "AIR_AMBULANCE_CALLSIGNS",
     "POLICE_CALLSIGNS",
     "QUIET_HOURS_EXCEPT",
@@ -75,11 +76,13 @@ class Settings:
     speech_quiet_hours: str
     aeroapi_key: str
     aeroapi_url: str
-    aeroapi_monthly_limit: int
+    # Dollars a month on AeroAPI, for planes overhead and for followed flights. Each
+    # lookup past the free credit is charged, so the two are best kept inside it together.
+    aeroapi_monthly_dollars: Decimal
     state_dir: str
     mute_chime: bool
     followed_file: str
-    followed_monthly_limit: int
+    followed_monthly_dollars: Decimal
     # The operator codes at the front of these services' callsigns, such as HLE.
     air_ambulance_callsigns: tuple[str, ...]
     police_callsigns: tuple[str, ...]
@@ -118,11 +121,11 @@ class Settings:
                 speech_dir=env.get("SPEECH_DIR", "").strip(),
                 aeroapi_key=env.get("AEROAPI_KEY", "").strip(),
                 aeroapi_url=env.get("AEROAPI_URL", "").strip(),
-                aeroapi_monthly_limit=int(env.get("AEROAPI_MONTHLY_LIMIT", "").strip() or 0),
+                aeroapi_monthly_dollars=_dollars("AEROAPI_MONTHLY_DOLLARS", env.get("AEROAPI_MONTHLY_DOLLARS", "")),
                 state_dir=env.get("STATE_DIR", "").strip(),
                 mute_chime=_switch("MUTE_CHIME", env.get("MUTE_CHIME", "")),
                 followed_file=env.get("FOLLOWED_FILE", "").strip(),
-                followed_monthly_limit=int(env.get("FOLLOWED_MONTHLY_LIMIT", "").strip() or 0),
+                followed_monthly_dollars=_dollars("FOLLOWED_MONTHLY_DOLLARS", env.get("FOLLOWED_MONTHLY_DOLLARS", "")),
                 air_ambulance_callsigns=_codes(env.get("AIR_AMBULANCE_CALLSIGNS", "")),
                 police_callsigns=_codes(env.get("POLICE_CALLSIGNS", "")),
                 air_ambulance_squawks=_squawks(env.get("AIR_AMBULANCE_SQUAWKS", "")),
@@ -140,6 +143,17 @@ def _switch(name: str, value: str) -> bool:
         return words[value.strip().lower()]
     except KeyError:
         raise ValueError(f"{name} should be true or false, not {value!r}") from None
+
+
+def _dollars(name: str, value: str) -> Decimal:
+    """An amount of money like 4 or 2.50, where empty is nothing, so no paid lookups at all."""
+    try:
+        amount = Decimal(value.strip() or "0")
+    except InvalidOperation:
+        raise ValueError(f"{name} should be an amount of dollars, not {value!r}") from None
+    if not amount.is_finite() or amount < 0:
+        raise ValueError(f"{name} should be an amount of dollars, not {value!r}")
+    return amount
 
 
 def _hours(name: str, value: str) -> str:

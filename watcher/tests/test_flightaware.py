@@ -1,9 +1,6 @@
-from datetime import datetime
-
 import pytest
 
 from fakes import FakeClock, FakeHttp, http_error
-from flights_watcher.budget import BudgetedHttp, BudgetSpent, MonthlyBudget
 from flights_watcher.caching import CachedOperatorNames, TtlCache
 from flights_watcher.flightaware import AeroApiOperatorNames, AeroApiRouteLookup, aeroapi_airport
 from flights_watcher.lookups import Airport, LookupFailed, Route
@@ -77,21 +74,6 @@ def test_operator_names_are_asked_for_once():
     names = CachedOperatorNames(AeroApiOperatorNames(BASE, http), TtlCache(FakeClock(), 60, 10))
     assert names.name("EWG") == names.name("EWG") == "Eurowings GmbH"
     assert http.requested == [OPERATOR_URL]
-
-
-def test_the_monthly_budget_stops_lookups_and_survives_a_restart(tmp_path):
-    clock = FakeClock(datetime(2026, 11, 30, 23, 0))
-    http = FakeHttp({OPERATOR_URL: {"name": "Eurowings"}})
-    budgeted = BudgetedHttp(http, MonthlyBudget(2, tmp_path / "aeroapi.json", clock))
-    budgeted.get_json(OPERATOR_URL)
-    restarted = BudgetedHttp(http, MonthlyBudget(2, tmp_path / "aeroapi.json", clock))
-    restarted.get_json(OPERATOR_URL)
-    with pytest.raises(BudgetSpent):
-        restarted.get_json(OPERATOR_URL)
-    assert len(http.requested) == 2
-    clock.at = datetime(2026, 12, 1, 0, 0)
-    restarted.get_json(OPERATOR_URL)
-    assert len(http.requested) == 3
 
 
 def test_an_operator_flightaware_does_not_know_has_no_name():

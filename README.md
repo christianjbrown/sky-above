@@ -175,6 +175,11 @@ Without a key, routes come from a free service that's often out of date.
 1. Get a personal key at https://www.flightaware.com/aeroapi/portal/
 2. Put it after `AEROAPI_KEY=` in `.env`, save, and run `docker compose up -d`.
 
+FlightAware gives you $5 of lookups a month for free, or $10 if you feed them. Sky Above spends at
+most $3 a month on planes overhead and $2 on followed flights, so out of the box it never costs a
+penny. Feeding FlightAware? Raise `AEROAPI_MONTHLY_DOLLARS` and `FOLLOWED_MONTHLY_DOLLARS` to
+make use of the extra $5. 💸
+
 ## Following a flight 🧳
 
 Picking someone up, or off on holiday yourself?
@@ -265,7 +270,8 @@ most likely to change:
 | `QUIET_HOURS_EXCEPT` | What still gets through both kinds of quiet hours | `helicopters`, `military`, both, or empty for nothing | `helicopters,military` |
 | `SPEECH_SERVER` | Where the voice comes from | empty for no voice at all | the Pi's own |
 | `PIPER_VOICE` | Which voice it speaks in | any voice name from the list below | `en_GB-southern_english_female-low` |
-| `FOLLOWED_MONTHLY_LIMIT` | Cap on followed-flight lookups a month | a number | `600` |
+| `AEROAPI_MONTHLY_DOLLARS` | Most it spends on AeroAPI route lookups a month | dollars, like `3` | `3` |
+| `FOLLOWED_MONTHLY_DOLLARS` | Most it spends on followed-flight lookups a month | dollars, like `2` | `2` |
 | `LINGER_SECONDS` | How long the card stays after the plane leaves | seconds | `30` |
 | `CARD_MIN_SECONDS` | The shortest time a plane's card is up | seconds | `60` |
 | `AIR_AMBULANCE_CALLSIGNS` | Which planes get the air ambulance look | the code their callsigns start with, like `HLE` in the UK | empty |
