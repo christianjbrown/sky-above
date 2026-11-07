@@ -28,6 +28,18 @@ NAMED = "Named"
 class Notable:
     who: str
     category: str
+    # The Wikipedia article about them, when it is not simply their name.
+    article: str | None = None
+
+    @property
+    def about(self) -> str:
+        return self.article or self.who
+
+
+@dataclass(frozen=True)
+class Owner:
+    who: str
+    article: str | None = None
 
 
 class NotableFinder(Protocol):
@@ -103,14 +115,17 @@ def plane_alert_table(text: str, categories: Collection[str]) -> dict[str, Notab
     return table
 
 
-def owner_names(text: str) -> dict[str, str]:
+def owner_names(text: str) -> dict[str, Owner]:
     """A names file: a registration, then who it belongs to, a plane to a line, such as
-    "N621MM Taylor Swift". Blank lines and lines starting with # are left out."""
-    names: dict[str, str] = {}
+    "N621MM Taylor Swift". Where their Wikipedia article goes by another name, it follows
+    a bar: "G-XXEB The King | Charles III". Blank lines and lines starting with # are left
+    out."""
+    names: dict[str, Owner] = {}
     for line in text.splitlines():
-        registration, _, who = line.strip().partition(" ")
-        if registration and not registration.startswith("#") and who.strip():
-            names[_registration(registration)] = who.strip()
+        registration, _, rest = line.strip().partition(" ")
+        who, _, article = (part.strip() for part in rest.partition("|"))
+        if registration and not registration.startswith("#") and who:
+            names[_registration(registration)] = Owner(who, article or None)
     return names
 
 
@@ -169,7 +184,7 @@ class NotableAircraft:
     """A plane's entry in the list, with the names file's word on who it belongs to put
     first, as it is the one kept by hand."""
 
-    def __init__(self, table: Current[Mapping[str, Notable]], names: Current[Mapping[str, str]]) -> None:
+    def __init__(self, table: Current[Mapping[str, Notable]], names: Current[Mapping[str, Owner]]) -> None:
         self._table = table
         self._names = names
 
@@ -177,7 +192,7 @@ class NotableAircraft:
         listed = self._table.value().get(plane.hex.lower())
         named = self._names.value().get(_registration(plane.registration)) if plane.registration else None
         if named:
-            return Notable(named, listed.category if listed else NAMED)
+            return Notable(named.who, listed.category if listed else NAMED, named.article)
         return listed
 
 
@@ -185,13 +200,23 @@ class CardMaker(Protocol):
     def card(self, sighting: Sighting) -> dict[str, Any]: ...
 
 
-class OwnedCards:
-    """Each card with who its plane belongs to, when it is a notable one."""
+class PortraitLookup(Protocol):
+    def portrait(self, article: str) -> str | None: ...
 
-    def __init__(self, cards: CardMaker, notables: NotableFinder) -> None:
+
+class OwnedCards:
+    """Each card with who its plane belongs to, and a picture of them, when it is a
+    notable one."""
+
+    def __init__(self, cards: CardMaker, notables: NotableFinder, portraits: PortraitLookup) -> None:
         self._cards = cards
         self._notables = notables
+        self._portraits = portraits
 
     def card(self, sighting: Sighting) -> dict[str, Any]:
         notable = self._notables.of(sighting.aircraft)
-        return {**self._cards.card(sighting), "owner": notable.who if notable else None}
+        return {
+            **self._cards.card(sighting),
+            "owner": notable.who if notable else None,
+            "ownerPortrait": self._portraits.portrait(notable.about) if notable else None,
+        }

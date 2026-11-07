@@ -47,6 +47,7 @@ FULL_ENV = {
     "NOTABLE_AIRCRAFT_URL": "",
     "NOTABLE_CATEGORIES": "Don't you know who I am?, Football,",
     "NOTABLE_NAMES_FILE": "/etc/flights/notable/names.txt",
+    "PORTRAIT_API_URL": "",
 }
 
 
@@ -88,6 +89,10 @@ def test_settings_read_every_value():
     assert listed.notable_aircraft_url == "https://example.com/plane-alert-db.csv"
     assert settings.notable_categories == ("Don't you know who I am?", "Football")
     assert settings.notable_names_file == "/etc/flights/notable/names.txt"
+    assert settings.portrait_api_url == ""
+    assert Settings.from_env({**FULL_ENV, "PORTRAIT_API_URL": " https://en.wikipedia.org/api/rest_v1 "}).portrait_api_url == (
+        "https://en.wikipedia.org/api/rest_v1"
+    )
     assert Settings.from_env({**FULL_ENV, "QUIET_HOURS_EXCEPT": ""}).quiet_hours_except == ()
     with pytest.raises(ConfigError, match="QUIET_HOURS_EXCEPT"):
         Settings.from_env({**FULL_ENV, "QUIET_HOURS_EXCEPT": "gliders"})

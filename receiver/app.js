@@ -96,7 +96,7 @@
     }
     followedCard.hide();
 
-    parts.showLogo(plane.airlineCode, plane.helicopter);
+    parts.showLogo(plane.airlineCode, plane.helicopter, plane.ownerPortrait);
     parts.setText("airline", plane.airline || plane.owner || plane.callsign || "");
     parts.setText("flight", plane.flightNumber || plane.callsign || plane.registration || plane.hex.toUpperCase());
     parts.showRoute(plane.origin, plane.destination);
@@ -180,7 +180,12 @@
   var NOTABLE_DEMO = {
     callsign: "GPOPS", flightNumber: null, airline: null, airlineCode: null, owner: "A Pop Star",
     origin: null, destination: null, aircraft: "Dassault Falcon 7X", typeCode: "FA7X", registration: "G-POPS",
-    altitudeFt: 5200, speedKt: 260, verticalRateFpm: -900
+    altitudeFt: 5200, speedKt: 260, verticalRateFpm: -900,
+    // A silhouette, as a made-up owner has no picture of their own.
+    ownerPortrait: "data:image/svg+xml," + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#3d5a80"/>' +
+      '<circle cx="50" cy="38" r="20" fill="#e0fbfc"/><ellipse cx="50" cy="95" rx="36" ry="30" fill="#e0fbfc"/></svg>'
+    )
   };
 
   function startDemo(which) {

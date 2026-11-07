@@ -149,6 +149,16 @@ describe("showLogo", () => {
     expect(document.querySelector(".logo").classList.contains("none")).toBe(true);
   });
 
+  it("shows a picture of who a notable plane belongs to in place of a logo", () => {
+    parts.showLogo(null, false, "https://example.com/a-pop-star.jpg");
+    expect(parts.byId("logo").getAttribute("src")).toBe("https://example.com/a-pop-star.jpg");
+    expect(document.querySelector(".logo").classList.contains("portrait")).toBe(true);
+    expect(document.querySelector(".logo").classList.contains("none")).toBe(false);
+    parts.showLogo("BAW", false, null);
+    expect(parts.byId("logo").getAttribute("src")).toBe("logos/BAW.svg");
+    expect(document.querySelector(".logo").classList.contains("portrait")).toBe(false);
+  });
+
   it("brings the tile back for the next airline after one without a logo", () => {
     parts.showLogo("ZZZ", false);
     parts.byId("logo").onerror();

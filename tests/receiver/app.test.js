@@ -381,6 +381,8 @@ describe("the demo plane", () => {
     expect(text("airline")).toBe("A Pop Star");
     expect(text("flight")).toBe("GPOPS");
     expect(text("aircraft")).toBe("Dassault Falcon 7X");
+    expect(document.querySelector(".logo").classList.contains("portrait")).toBe(true);
+    expect(document.getElementById("logo").getAttribute("src")).toMatch(/^data:image\/svg\+xml,/);
   });
 
   it("treats an unknown demo name as the plain demo plane", async () => {
