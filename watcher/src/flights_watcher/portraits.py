@@ -4,7 +4,7 @@ import logging
 import pathlib
 import re
 from collections.abc import Sequence
-from typing import Protocol
+from typing import Any, Protocol
 from urllib.error import HTTPError
 from urllib.parse import quote
 
@@ -15,6 +15,8 @@ from flights_watcher.lookups import LookupFailed
 # Pictures from Wikimedia Commons are free to show. Ones uploaded to a Wikipedia itself are
 # mostly logos and crests used under fair use, which is not this display's to borrow.
 _FREE_PICTURES = "/wikipedia/commons/"
+# The width in a Commons thumbnail's address: .../A_Pop_Star.jpg/330px-A_Pop_Star.jpg.
+_THUMBNAIL_WIDTH = re.compile(r"/\d+px-")
 
 
 class PortraitLookup(Protocol):
@@ -27,11 +29,13 @@ class PortraitLookup(Protocol):
 class WikipediaPortraits:
     """The lead picture of a Wikipedia article, which for someone famous is their official
     portrait where they have one, or a recent photo. A name that could be several people
-    lands on a disambiguation page, which has none."""
+    lands on a disambiguation page, which has none. The picture is asked for at the width
+    given, which has to be one Commons serves, or whole when it is no wider than that."""
 
-    def __init__(self, base_url: str, http: JsonHttp) -> None:
+    def __init__(self, base_url: str, http: JsonHttp, width: int) -> None:
         self._base_url = base_url.rstrip("/")
         self._http = http
+        self._width = width
 
     def portrait(self, article: str) -> str | None:
         url = f"{self._base_url}/page/summary/{quote(article.replace(' ', '_'), safe='')}"
@@ -45,8 +49,16 @@ class WikipediaPortraits:
             raise LookupFailed(str(error)) from error
         if not isinstance(page, dict) or page.get("type") != "standard":
             return None
-        source = (page.get("thumbnail") or {}).get("source")
+        source = self._sized(page.get("thumbnail") or {}, page.get("originalimage") or {})
         return source if isinstance(source, str) and _FREE_PICTURES in source else None
+
+    def _sized(self, thumbnail: Any, original: Any) -> Any:
+        source = thumbnail.get("source")
+        if not isinstance(source, str):
+            return None
+        if isinstance(original.get("width"), int) and original["width"] <= self._width and isinstance(original.get("source"), str):
+            return original["source"]
+        return _THUMBNAIL_WIDTH.sub(f"/{self._width}px-", source)
 
 
 class LocalPortraits:

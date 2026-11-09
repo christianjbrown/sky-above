@@ -236,7 +236,10 @@ Add categories such as `Head of State` or `As Seen on TV` to `NOTABLE_CATEGORIES
 
 Pictures come from Wikipedia: the lead picture of the owner's article, which is their official
 portrait where they have one. Only freely licensed pictures from Wikimedia Commons are used, and
-Wikipedia is only asked when one of these planes actually gets a card.
+Wikipedia is only asked when one of these planes actually gets a card. The Pi then finds the face
+in the photo and cuts a square round it, head and shoulders, so the picture fills the tile
+instead of sitting in a strip down the middle of it. 🔍 A photo with no face it can find is cut
+from the top, where a head usually is.
 
 ### Fixing names 📝
 
@@ -496,6 +499,8 @@ Place names not in the Latin alphabet need their fonts too: see `tools/fetch_map
 - Owners' pictures come from [Wikimedia Commons](https://commons.wikimedia.org) through
   Wikipedia, freely licensed by their photographers, who are credited on each picture's page
   there. Logos and crests uploaded to Wikipedia under fair use are skipped.
+- Faces are found with [YuNet](https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet)
+  (MIT), the face detector in OpenCV's model zoo, which the watcher ships a copy of.
 - The map's scripts and fonts are fetched by `python3 tools/fetch_map_assets.py`.
 - The map runs on [MapLibre GL JS](https://maplibre.org) and [PMTiles](https://github.com/protomaps/PMTiles)
   (both BSD-3-Clause), styled with [Protomaps basemaps](https://github.com/protomaps/basemaps), in

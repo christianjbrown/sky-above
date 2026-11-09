@@ -9,8 +9,8 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY src ./src
 RUN uv sync --frozen --no-dev
 
-# The speech clip and state volumes are created from these folders, so they start out writable by nobody.
-RUN mkdir -p /var/lib/flights/speech /var/lib/flights/state \
-    && chown nobody:nogroup /var/lib/flights/speech /var/lib/flights/state
+# The speech clip, face and state volumes are created from these folders, so they start out writable by nobody.
+RUN mkdir -p /var/lib/flights/speech /var/lib/flights/faces /var/lib/flights/state \
+    && chown nobody:nogroup /var/lib/flights/speech /var/lib/flights/faces /var/lib/flights/state
 USER nobody
 CMD ["/app/.venv/bin/python", "-m", "flights_watcher"]

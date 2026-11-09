@@ -129,8 +129,10 @@ services:
       - TUNING_FILE=/etc/flights/tuning/tuning.toml
       - TUNING_LOCAL_FILE=/etc/flights/tuning/local.toml
       - OWN_PORTRAITS_DIR=/etc/flights/own-portraits
+      - FACES_DIR=/var/lib/flights/faces
     volumes:
       - speech:/var/lib/flights/speech
+      - faces:/var/lib/flights/faces
       - watcher_state:/var/lib/flights/state
       # The flights to follow, in followed/flights.txt next to this file (see the README).
       - ./followed:/etc/flights/followed:ro
@@ -194,6 +196,7 @@ services:
       - ./own-logos:/srv/own/logos:ro
       - ./own-portraits:/srv/own/portraits:ro
       - speech:/srv/speech:ro
+      - faces:/srv/faces:ro
       - certs:/certs:ro
       - ./nginx/templates:/etc/nginx/templates:ro
       - ./nginx/https.sh:/docker-entrypoint.d/40-https.sh:ro
@@ -236,5 +239,6 @@ volumes:
   graphs1090:
   piper_data:
   speech:
+  faces:
   watcher_state:
   certs:

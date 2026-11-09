@@ -28,6 +28,11 @@ location /portraits/ {
     alias /srv/own/portraits/;
 }
 
+# Web pictures of notable aircraft's owners, cut to a square round the face by the watcher.
+location /faces/ {
+    alias /srv/faces/;
+}
+
 # The map extract of the area round home, kept outside the page folder because it is too big for git.
 location /map/ {
     alias /srv/map/;

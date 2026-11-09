@@ -41,6 +41,23 @@ class UrllibTextHttp:
             return body.decode("utf-8")
 
 
+class BytesHttp(Protocol):
+    def get_bytes(self, url: str) -> bytes:
+        """Return the body as it is. Raises OSError (HTTPError included) or ValueError."""
+        ...
+
+
+class UrllibBytesHttp:
+    def __init__(self, user_agent: str, timeout_seconds: float) -> None:
+        self._user_agent = user_agent
+        self._timeout_seconds = timeout_seconds
+
+    def get_bytes(self, url: str) -> bytes:
+        with _opened(url, {"User-Agent": self._user_agent}, self._timeout_seconds) as response:
+            body: bytes = response.read()
+            return body
+
+
 def _opened(url: str, headers: Mapping[str, str], timeout_seconds: float) -> Any:
     if not url.startswith(("https://", "http://")):
         raise ValueError(f"not a web address: {url}")

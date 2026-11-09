@@ -3,11 +3,9 @@
 The Pi only makes the audio file. The card on the Hub fetches it from the
 receiver page and plays it through the Hub's own speaker."""
 
-import hashlib
 import io
 import json
 import logging
-import pathlib
 import re
 import socket
 import wave
@@ -16,6 +14,7 @@ from datetime import datetime
 from typing import Any, BinaryIO, Protocol
 
 from flights_watcher.announced import AnnouncedFlights
+from flights_watcher.files import KeptFiles
 from flights_watcher.geo import Location
 from flights_watcher.heard import SpeechTiming, ahead
 
@@ -296,31 +295,15 @@ def _said_boeing(match: re.Match[str]) -> str:
 
 
 class SpeechClips:
-    """Keeps one WAV per sentence in a folder the receiver serves, named by a hash of the
-    words, so a repeated announcement is not synthesised twice. Only the newest few are kept."""
+    """One WAV per sentence, kept in a folder the receiver serves, so a repeated announcement
+    is not synthesised twice."""
 
-    def __init__(self, directory: pathlib.Path, url_prefix: str, keep: int, synthesizer: SpeechSynthesizer) -> None:
-        self._directory = directory
-        self._url_prefix = url_prefix
-        self._keep = keep
+    def __init__(self, files: KeptFiles, synthesizer: SpeechSynthesizer) -> None:
+        self._files = files
         self._synthesizer = synthesizer
 
     def url_for(self, text: str) -> str:
-        name = hashlib.sha256(text.encode()).hexdigest()[:20] + ".wav"
-        path = self._directory / name
-        if path.exists():
-            path.touch()
-        else:
-            partial = path.with_suffix(".part")
-            partial.write_bytes(self._synthesizer.synthesize(text))
-            partial.replace(path)
-            self._prune()
-        return self._url_prefix + name
-
-    def _prune(self) -> None:
-        clips = sorted(self._directory.glob("*.wav"), key=lambda clip: clip.stat().st_mtime, reverse=True)
-        for old in clips[self._keep :]:
-            old.unlink(missing_ok=True)
+        return self._files.url_for(text, lambda: self._synthesizer.synthesize(text))
 
 
 class SpeechPicker(Protocol):

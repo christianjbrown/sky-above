@@ -9,6 +9,9 @@ from flights_watcher.portraits import CachedPortraits, FirstPortrait, LocalPortr
 
 BASE = "https://wiki.example/api/rest_v1/"
 FREE = "https://upload.example/wikipedia/commons/thumb/a/ab/A_Pop_Star.jpg/330px-A_Pop_Star.jpg"
+BIG = "https://upload.example/wikipedia/commons/thumb/a/ab/A_Pop_Star.jpg/960px-A_Pop_Star.jpg"
+WHOLE = "https://upload.example/wikipedia/commons/a/ab/A_Pop_Star.jpg"
+WIDTH = 960
 LOGO = "https://upload.example/wikipedia/en/thumb/2/2d/A_Club_crest.svg/330px-A_Club_crest.svg.png"
 
 
@@ -29,22 +32,43 @@ def test_the_portrait_is_the_free_lead_picture_of_their_article():
             summary("Nobody"): missing,
         }
     )
-    portraits = WikipediaPortraits(BASE, http)
-    assert portraits.portrait("A Pop Star") == FREE
+    portraits = WikipediaPortraits(BASE, http, WIDTH)
+    assert portraits.portrait("A Pop Star") == BIG
     assert portraits.portrait("A Football Club") is None
     assert portraits.portrait("Somebody") is None
     assert portraits.portrait("A Shy Person") is None
-    assert portraits.portrait("A King (monarch)") == FREE
+    assert portraits.portrait("A King (monarch)") == BIG
     assert portraits.portrait("Strange") is None
     assert portraits.portrait("Nobody") is None
     missing.close()
+
+
+def test_the_picture_is_asked_for_at_the_width_wanted_or_whole_when_it_is_no_wider():
+    def page(original):
+        return {"type": "standard", "thumbnail": {"source": FREE}, "originalimage": original}
+
+    http = FakeHttp(
+        {
+            summary("Large"): page({"source": WHOLE, "width": 3000, "height": 4000}),
+            summary("Small"): page({"source": WHOLE, "width": 640, "height": 800}),
+            summary("Odd"): page({"source": WHOLE, "width": "640"}),
+            summary("Nameless"): page({"width": 640}),
+            summary("Pictureless"): {"type": "standard", "thumbnail": {"width": 330}},
+        }
+    )
+    portraits = WikipediaPortraits(BASE, http, WIDTH)
+    assert portraits.portrait("Large") == BIG
+    assert portraits.portrait("Small") == WHOLE
+    assert portraits.portrait("Odd") == BIG
+    assert portraits.portrait("Nameless") == BIG
+    assert portraits.portrait("Pictureless") is None
 
 
 def test_a_service_that_cannot_be_asked_is_a_failed_lookup():
     broken = http_error(500)
     for error in (broken, OSError("offline"), ValueError("not json")):
         with pytest.raises(LookupFailed):
-            WikipediaPortraits(BASE, FakeHttp({summary("A_Pop_Star"): error})).portrait("A Pop Star")
+            WikipediaPortraits(BASE, FakeHttp({summary("A_Pop_Star"): error}), WIDTH).portrait("A Pop Star")
     broken.close()
 
 
