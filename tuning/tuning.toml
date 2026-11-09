@@ -233,3 +233,15 @@ timeout_seconds = 60
 cache_hours = 24
 retry_minutes = 10
 cache_entries = 200
+# Wikipedia's picture is fetched this wide, which has to be a width Commons serves (330,
+# 500, 960 or 1280), and cut to a square of this many pixels round the face, kept as a
+# JPEG of this quality. The square's side is the face's times the zoom, and the headroom
+# is the share of the room round the face that goes above it rather than below. Anything
+# the detector is less sure than this is a face is not one. The newest squares are kept.
+source_pixels = 960
+square_pixels = 320
+jpeg_quality = 85
+face_zoom = 2.4
+face_headroom = 0.4
+face_confidence = 0.6
+squares_kept = 200

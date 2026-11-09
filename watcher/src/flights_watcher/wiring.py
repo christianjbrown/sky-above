@@ -35,6 +35,8 @@ from flights_watcher.estimate import (
     RecentBlockTimes,
     TurnaroundsByType,
 )
+from flights_watcher.faces import FaceCrops
+from flights_watcher.files import KeptFiles
 from flights_watcher.flightaware import AeroApiOperatorNames, AeroApiRouteLookup, OperatorNames
 from flights_watcher.followed_card import FollowedCardBuilder
 from flights_watcher.followed_list import FollowedListFile
@@ -53,7 +55,7 @@ from flights_watcher.followed_news import (
 )
 from flights_watcher.following import FollowedFlights
 from flights_watcher.heard import SpeechTiming
-from flights_watcher.http import JsonHttp, UrllibJsonHttp, UrllibTextHttp
+from flights_watcher.http import JsonHttp, UrllibBytesHttp, UrllibJsonHttp, UrllibTextHttp
 from flights_watcher.live import LatestCard, LiveServer
 from flights_watcher.lookups import (
     AdsbdbRouteLookup,
@@ -100,6 +102,7 @@ from flights_watcher.notable import (
     owner_names,
     plane_alert_table,
 )
+from flights_watcher.opencv import YUNET_MODEL, OpenCvPictures, YuNetFaces
 from flights_watcher.paths import (
     CameOverhead,
     FirstFound,
@@ -241,6 +244,10 @@ def lookups(settings: Settings, tuning: Tuning, http: JsonHttp, clock: Clock, lo
     return Lookups(tidied, known, photos, operator_names, airport_tidiers)
 
 
+# Announcement clips are WAVs, which is what Piper makes and the receiver's /speech/ serves.
+SPEECH_FILES = ".wav"
+
+
 def voices(settings: Settings, tuning: Tuning, clock: Clock, rare: RareKinds, logger: logging.Logger) -> Voices:
     """Spoken announcements when there is a speech server, silence otherwise."""
     if settings.speech_server is None:
@@ -248,9 +255,7 @@ def voices(settings: Settings, tuning: Tuning, clock: Clock, rare: RareKinds, lo
     host, port = settings.speech_server
     launch_start = tuning.cast_launch_seconds + (tuning.chime_seconds + tuning.unmute_settle_seconds if settings.mute_chime else 0)
     clips = SpeechClips(
-        pathlib.Path(settings.speech_dir),
-        tuning.speech_url_prefix,
-        tuning.speech_clips_kept,
+        KeptFiles(pathlib.Path(settings.speech_dir), tuning.speech_url_prefix, tuning.speech_clips_kept, SPEECH_FILES),
         SaidAsWords(BoeingNumbersSaid(AirbusNumbersSaid(WyomingSpeech(host, port, tuning.speech_timeout_seconds))), tuning.said_as_words),
     )
     wording = AnnouncementWording(tuning.named_airports, SpokenWhereabouts(settings.home))
@@ -373,9 +378,12 @@ def notables(settings: Settings, tuning: Tuning, clock: Clock, logger: logging.L
     )
 
 
-# Where the receiver serves the Pi's own owner pictures, relative to the page. It has to
-# match the receiver's /portraits/ location, so it is not a tuning.
+# Where the receiver serves the Pi's own owner pictures and the squares cut from web ones,
+# relative to the page. They have to match the receiver's /portraits/ and /faces/ locations,
+# so they are not tunings.
 OWN_PORTRAITS_URL = "portraits/"
+FACES_URL = "faces/"
+FACE_FILES = ".jpg"
 
 
 def portraits(settings: Settings, tuning: Tuning, http: JsonHttp, clock: Clock, logger: logging.Logger) -> PortraitLookup:
@@ -388,7 +396,20 @@ def portraits(settings: Settings, tuning: Tuning, http: JsonHttp, clock: Clock, 
         cache: TtlCache[str | None] = TtlCache(
             clock, tuning.portrait_cache_seconds, tuning.portrait_cache_entries, tuning.portrait_retry_seconds
         )
-        places.append(CachedPortraits(WikipediaPortraits(settings.portrait_api_url, http), cache, logger))
+        web: PortraitLookup = WikipediaPortraits(settings.portrait_api_url, http, tuning.portrait_source_pixels)
+        if settings.faces_dir:
+            web = FaceCrops(
+                web,
+                UrllibBytesHttp(tuning.user_agent, tuning.http_timeout_seconds),
+                OpenCvPictures(),
+                YuNetFaces(YUNET_MODEL, tuning.face_confidence),
+                tuning.portrait_framing,
+                KeptFiles(pathlib.Path(settings.faces_dir), FACES_URL, tuning.portraits_kept, FACE_FILES),
+                tuning.portrait_square_pixels,
+                tuning.portrait_jpeg_quality,
+                logger,
+            )
+        places.append(CachedPortraits(web, cache, logger))
     return FirstPortrait(places)
 
 

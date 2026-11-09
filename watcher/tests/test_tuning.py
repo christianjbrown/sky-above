@@ -6,6 +6,7 @@ import pytest
 
 from flights_watcher.config import ConfigError
 from flights_watcher.estimate import TurnaroundRule
+from flights_watcher.faces import Framing
 from flights_watcher.paths import Likeness
 from flights_watcher.tuning import Tuning, TuningError, load_tuning, read_toml
 
@@ -30,6 +31,9 @@ def test_the_shipped_tunings_are_read_in_the_units_the_watcher_counts_in():
     assert tuning.default_turnaround == timedelta(minutes=35)
     assert tuning.notable_reread_seconds == 3600
     assert tuning.portrait_retry_seconds == 600
+    assert tuning.portrait_source_pixels == 960
+    assert tuning.portrait_framing == Framing(zoom=2.4, headroom=0.4)
+    assert tuning.portraits_kept == 200
 
 
 def test_airports_are_said_by_city_unless_their_city_has_several():

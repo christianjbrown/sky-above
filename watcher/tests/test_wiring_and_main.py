@@ -12,7 +12,7 @@ from flights_watcher import wiring
 from flights_watcher.chime import MutedLaunchDevice
 from flights_watcher.clock import SystemClock
 from flights_watcher.config import Settings
-from flights_watcher.http import UrllibJsonHttp, UrllibTextHttp
+from flights_watcher.http import UrllibBytesHttp, UrllibJsonHttp, UrllibTextHttp
 from flights_watcher.live import LatestCard, LiveServer
 from flights_watcher.lookups import NoPhotos
 from flights_watcher.notable import NAMED, Notable
@@ -135,6 +135,9 @@ def test_json_is_fetched_over_http_and_only_http():
         assert UrllibTextHttp("test", 2).get_text(f"http://127.0.0.1:{port}/planes.json") == '{"type": "planes"}'
         with pytest.raises(ValueError, match="not a web address"):
             UrllibTextHttp("test", 2).get_text("file:///etc/passwd")
+        assert UrllibBytesHttp("test", 2).get_bytes(f"http://127.0.0.1:{port}/planes.json") == b'{"type": "planes"}'
+        with pytest.raises(ValueError, match="not a web address"):
+            UrllibBytesHttp("test", 2).get_bytes("file:///etc/passwd")
     finally:
         server.stop()
 
@@ -158,9 +161,12 @@ def test_notable_owners_come_from_the_names_file_and_the_list(tmp_path):
 def test_portraits_come_from_the_pi_first_and_nowhere_when_both_are_off(tmp_path):
     http = UrllibJsonHttp("test", 1)
     (tmp_path / "a-football-club.png").write_bytes(b"png")
-    own = settings(tmp_path, OWN_PORTRAITS_DIR=str(tmp_path), PORTRAIT_API_URL="https://wiki.invalid/api/rest_v1")
+    own = settings(tmp_path, OWN_PORTRAITS_DIR=str(tmp_path), PORTRAIT_API_URL="https://wiki.invalid/api/rest_v1", FACES_DIR="")
     assert wiring.portraits(own, TUNING, http, FakeClock(), LOGGER).portrait("A Football Club") == "portraits/a-football-club.png"
     off = settings(tmp_path, OWN_PORTRAITS_DIR="", PORTRAIT_API_URL="")
     assert wiring.portraits(off, TUNING, http, FakeClock(), LOGGER).portrait("A Football Club") is None
+    # Wikipedia's pictures are cut round the face when there is somewhere to keep the squares.
+    faces = settings(tmp_path, OWN_PORTRAITS_DIR="", PORTRAIT_API_URL="https://wiki.invalid/api/rest_v1", FACES_DIR=str(tmp_path))
+    assert wiring.portraits(faces, TUNING, http, FakeClock(), LOGGER).portrait("A Pop Star") is None
     # Built but not asked, as asking would start a download.
     assert wiring.notables(settings(tmp_path, NOTABLE_AIRCRAFT_URL="https://example.invalid/list.csv"), TUNING, FakeClock(), LOGGER)

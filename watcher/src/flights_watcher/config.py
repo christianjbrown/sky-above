@@ -58,6 +58,7 @@ OPTIONAL_KEYS = (
     "PORTRAIT_API_URL",
     "TUNING_LOCAL_FILE",
     "OWN_PORTRAITS_DIR",
+    "FACES_DIR",
 )
 
 
@@ -121,6 +122,9 @@ class Settings:
     tuning_local_file: str
     # A folder of owners' pictures kept on the Pi, or empty for none.
     own_portraits_dir: str
+    # Where web pictures of owners are kept once cut to a square round the face, or empty
+    # to show them as they come.
+    faces_dir: str
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "Settings":
@@ -169,6 +173,7 @@ class Settings:
                 tuning_file=env["TUNING_FILE"].strip(),
                 tuning_local_file=env.get("TUNING_LOCAL_FILE", "").strip(),
                 own_portraits_dir=env.get("OWN_PORTRAITS_DIR", "").strip(),
+                faces_dir=env.get("FACES_DIR", "").strip(),
             )
             if settings.aeroapi_key and not (settings.aeroapi_prices and env.get("AEROAPI_UNLISTED_PRICE", "").strip()):
                 raise ValueError("an AEROAPI_KEY needs AEROAPI_PRICES and AEROAPI_UNLISTED_PRICE to count what it spends")

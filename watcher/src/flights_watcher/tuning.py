@@ -11,6 +11,7 @@ from typing import Any
 
 from flights_watcher.config import ConfigError
 from flights_watcher.estimate import TurnaroundRule
+from flights_watcher.faces import Framing
 from flights_watcher.following import FollowTiming
 from flights_watcher.paths import Likeness
 
@@ -204,6 +205,12 @@ class Tuning:
     portrait_cache_seconds: float
     portrait_retry_seconds: float
     portrait_cache_entries: int
+    portrait_source_pixels: int
+    portrait_square_pixels: int
+    portrait_jpeg_quality: int
+    portrait_framing: Framing
+    face_confidence: float
+    portraits_kept: int
 
     @property
     def named_airports(self) -> tuple[str, ...]:
@@ -311,6 +318,12 @@ class Tuning:
             portrait_cache_seconds=portraits.number("cache_hours") * HOUR,
             portrait_retry_seconds=portraits.number("retry_minutes") * MINUTE,
             portrait_cache_entries=portraits.whole("cache_entries"),
+            portrait_source_pixels=portraits.whole("source_pixels"),
+            portrait_square_pixels=portraits.whole("square_pixels"),
+            portrait_jpeg_quality=portraits.whole("jpeg_quality"),
+            portrait_framing=Framing(portraits.number("face_zoom"), portraits.number("face_headroom")),
+            face_confidence=portraits.number("face_confidence"),
+            portraits_kept=portraits.whole("squares_kept"),
         )
         root.done()
         return tuning

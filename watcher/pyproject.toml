@@ -3,7 +3,11 @@ name = "flights-watcher"
 version = "0.1.0"
 description = "Casts a card to the Nest Hub whenever a plane flies near home"
 requires-python = ">=3.13"
-dependencies = ["pychromecast", "tzdata"]
+dependencies = [
+    "opencv-python-headless>=5.0.0.93",
+    "pychromecast",
+    "tzdata",
+]
 
 [dependency-groups]
 dev = [
