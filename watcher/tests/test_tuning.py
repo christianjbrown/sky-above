@@ -38,7 +38,7 @@ def test_the_shipped_tunings_are_read_in_the_units_the_watcher_counts_in():
 
 def test_airports_are_said_by_city_unless_their_city_has_several():
     tuning = load_tuning(SHIPPED, None)
-    assert tuning.airport_cities["GOT"] == "Göteborg"
+    assert tuning.airport_cities["GOT"] == "Gothenburg"
     assert tuning.airport_cities["STN"] == "London"
     assert "STN" in tuning.named_airports
     assert "GOT" not in tuning.named_airports
