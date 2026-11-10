@@ -277,8 +277,13 @@ picks it up, and it's gitignored too, like `own-logos/`.
   aircraft, which are rare enough to be worth waking up for. Don't want those either? Set
   `QUIET_HOURS_EXCEPT=` (empty) in `.env`.
 - 🚨 **Emergencies win.** A plane in an emergency beats everything, quiet hours included, and stays
-  up until it has been over for a minute. Air ambulances, police and military aircraft that come
-  into the zone keep the card until they're 5 km away, so a plane passing through waits its turn.
+  up until it has been over for a minute. Air ambulances, police and military aircraft, and
+  famous people's planes, get a card and a voice wherever the antenna hears them, after whatever
+  is overhead. One that comes into the zone keeps the card until it's 5 km away, so a plane
+  passing through waits its turn.
+- 🔇 **Only what you'll hear gets a voice.** A flight overhead is announced when its destination is
+  known and it passes lower than 5 km, so you can hear it (`heard_below_km` in the tunings).
+  Anything higher, or with no destination, is shown without a word.
   On a Nest Hub the emergency announcement turns the volume up to 8 out of 10 (never down) and puts
   it back afterwards.
 - 🔔 **It tells you when it's stuck.** A little watchdog checks on the watcher every minute and

@@ -117,7 +117,7 @@ class Watcher:
         aircraft = [plane for plane in heard if not quiet or self._rare.includes_aircraft(plane)]
         # Looked for every time, even under an emergency, as finding them learns from each look.
         sightings = self._zone.sightings(aircraft)
-        self._arrivals.note(sightings)
+        self._arrivals.note([sighting for sighting in sightings if not sighting.afar])
         # An emergency goes before anything else, at any hour, wherever the plane is.
         emergency = self._emergencies.message(heard)
         if emergency is not None:
@@ -151,10 +151,12 @@ class Watcher:
             self._display.show(self._messages.build(leaving, aircraft))
 
     def _waits_its_turn(self, sightings: list[Sighting]) -> bool:
-        """A plane only on its way, while the card is still showing one that has just left,
-        waits until that card's time is up. One in the zone takes over straight away, and so
-        does one due overhead within due_seconds, which would be gone before its turn came."""
+        """A plane only on its way, or one far off, while the card is still showing one that
+        has just left, waits until that card's time is up. One in the zone takes over straight
+        away, and so does one due overhead within due_seconds, which would be gone before its
+        turn came."""
         top = sightings[0]
         gone = self._current not in {s.aircraft.hex for s in sightings}
         due = top.overhead_in_seconds is not None and top.overhead_in_seconds <= self._due_seconds
-        return self._showing == "planes" and top.approaching and gone and not due and not self._linger.expired()
+        waits = (top.approaching and not due) or top.afar
+        return self._showing == "planes" and waits and gone and not self._linger.expired()

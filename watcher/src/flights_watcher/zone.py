@@ -15,6 +15,8 @@ class Sighting:
     overhead_in_seconds: float | None = None
     # Not in the zone yet: only on a line that will bring it over.
     approaching: bool = False
+    # Outside the zone, and not on its way: an aircraft worth a card wherever it is heard.
+    afar: bool = False
 
 
 class Zone:

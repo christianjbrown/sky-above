@@ -487,3 +487,31 @@ def test_a_failing_hub_is_left_alone_for_a_while():
     assert device.running_app_id() == "E8C28D3C"
     assert device.running_app_id() == "E8C28D3C"
     assert flaky.calls == 3
+
+
+def test_a_plane_far_off_waits_for_the_card_on_screen_and_is_not_logged_as_overhead(caplog):
+    zone = HeardAnywhereStandIn("far")
+    watcher, sky, display, clock = make_watcher(minimum=60, zone=zone)
+    sky.planes = [plane("first", lat=HOME.lat + 0.001)]
+    watcher.tick()
+    sky.planes = [plane("far", lat=HOME.lat + 1)]
+    clock.seconds = 30
+    with caplog.at_level(logging.INFO):
+        watcher.tick()
+    assert display.shown[-1]["planes"] == [{"hex": "first"}]
+    assert "far overhead" not in caplog.text
+    clock.seconds = 60
+    watcher.tick()
+    assert display.shown[-1]["planes"] == [{"hex": "far"}]
+
+
+class HeardAnywhereStandIn:
+    """The zone, plus the planes named as far off, wherever they are."""
+
+    def __init__(self, *afar: str) -> None:
+        self._afar = afar
+
+    def sightings(self, aircraft):
+        planes = list(aircraft)
+        far = [Sighting(p, 111.0, afar=True) for p in planes if p.hex in self._afar]
+        return Zone(HOME, 3).sightings(planes) + far
