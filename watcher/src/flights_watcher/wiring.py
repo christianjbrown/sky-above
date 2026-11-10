@@ -8,7 +8,9 @@ from dataclasses import dataclass
 from zoneinfo import ZoneInfo
 
 from flights_watcher.announced import RememberedFlights
+from flights_watcher.anywhere import AnySpecial, FamousOwner, HeardAnywhere, ServiceKinds
 from flights_watcher.approach import ApproachFinder, ClosestApproach, LandsFirst, OverheadAndApproaching, SteeredIn
+from flights_watcher.audible import AnyOf, HeardFromTheGround, SpecialAircraft
 from flights_watcher.bound import DestinationBound, SameWay
 from flights_watcher.budget import BudgetedHttp, MonthlyBudget, PricedByPath
 from flights_watcher.caching import CachedOperatorNames, CachedPhotoLookup, CachedRouteLookup, RetryLater, TtlCache
@@ -265,6 +267,7 @@ def voices(settings: Settings, tuning: Tuning, clock: Clock, rare: RareKinds, lo
         SpeechTiming(tuning.spoken_chars_per_second, tuning.clip_making_ratio, launch_start, tuning.showing_start_seconds),
         clips,
         RememberedFlights(pathlib.Path(settings.state_dir) / tuning.announced_file, tuning.announced_kept_for, clock, logger),
+        AnyOf([SpecialAircraft(tuning.services_kept), HeardFromTheGround(tuning.heard_below_km)]),
         logger,
     )
     quiet_hours = QuietHours.parse(settings.speech_quiet_hours)
@@ -493,9 +496,10 @@ def watcher_for(
             ),
         ]
     )
+    notable = notables(settings, tuning, clock, logger)
     cards = OwnedCards(
         CardBuilder(found.routes, found.photos, AircraftNames(), services, logger),
-        notables(settings, tuning, clock, logger),
+        notable,
         portraits(settings, tuning, http, clock, logger),
     )
 
@@ -525,12 +529,16 @@ def watcher_for(
     )
     return Watcher(
         source=HeardSource(KnownRotorcraft.bundled(Tar1090AircraftSource(settings.aircraft_url, http)), status),
-        zone=ServicesStay(
-            OverheadAndApproaching(zone, Observing(recorder, approaching), closest, tuning.overhead_soon_seconds),
-            services,
-            tuning.services_kept,
+        zone=HeardAnywhere(
+            ServicesStay(
+                OverheadAndApproaching(zone, Observing(recorder, approaching), closest, tuning.overhead_soon_seconds),
+                services,
+                tuning.services_kept,
+                settings.home,
+                tuning.service_hold_km,
+            ),
+            AnySpecial([ServiceKinds(services, tuning.services_kept), FamousOwner(notable)]),
             settings.home,
-            tuning.service_hold_km,
         ),
         messages=planes_message(voice.planes),
         display=display,

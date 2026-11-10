@@ -97,6 +97,10 @@ clips_kept = 50
 # An announcement ends "It's overhead now." when the plane will be this close by the time
 # it has been read out.
 overhead_now_km = 0.5
+# A flight in the zone is announced only when its destination is known and it passes home
+# lower than this, so it can be heard. Air ambulances, the police, the military and famous
+# owners' planes are announced wherever they are; anything else is shown without a word.
+heard_below_km = 5
 # Flights already announced, so one that drops back to second or leaves and returns stays
 # quiet. Longer than any flight is in sight, so a plane is introduced once whatever happens.
 announced_kept_hours = 6
@@ -215,8 +219,9 @@ steep_altitude_share = 0.5
 announced_remembered = 20
 
 [services]
-# An air ambulance, police or military aircraft that comes into the zone keeps the card
-# until it is further than this from home.
+# Air ambulance, police and military aircraft get a card and an announcement wherever the
+# antenna hears them, after the planes overhead, as do famous owners' planes. One that
+# comes into the zone keeps the card until it is further than this from home.
 kept = ["ambulance", "police", "military"]
 hold_km = 5
 

@@ -5,6 +5,7 @@ import socket
 import threading
 import wave
 from datetime import datetime
+from typing import Any
 
 import pytest
 
@@ -45,6 +46,14 @@ class Announced:
 
 
 LOG = logging.getLogger("test")
+
+
+class EveryCard:
+    def includes(self, card: dict[str, Any]) -> bool:
+        return True
+
+
+EVERY_CARD = EveryCard()
 
 
 class Nowhere:
@@ -178,6 +187,7 @@ def test_announcer_speaks_once_per_plane_and_survives_a_failure(tmp_path):
         INSTANT,
         SpeechClips(KeptFiles(tmp_path, "speech/", 5, ".wav"), synth),
         Announced(),
+        EVERY_CARD,
         LOG,
     )
     url = announcer.speech_for(CARD)
@@ -189,6 +199,7 @@ def test_announcer_speaks_once_per_plane_and_survives_a_failure(tmp_path):
         INSTANT,
         SpeechClips(KeptFiles(tmp_path / "x", "speech/", 5, ".wav"), CountingSynth(fail=True)),
         Announced(),
+        EVERY_CARD,
         LOG,
     )
     assert broken.speech_for(CARD) is None
@@ -202,6 +213,7 @@ def test_a_closer_plane_is_announced_but_one_coming_back_is_not(tmp_path):
         INSTANT,
         SpeechClips(KeptFiles(tmp_path, "speech/", 5, ".wav"), CountingSynth()),
         Announced(),
+        EVERY_CARD,
         LOG,
     )
     first = announcer.speech_for(CARD)
@@ -217,6 +229,7 @@ def test_a_plane_back_on_a_fresh_card_is_not_announced_again(tmp_path):
         INSTANT,
         SpeechClips(KeptFiles(tmp_path, "speech/", 5, ".wav"), CountingSynth()),
         Announced(),
+        EVERY_CARD,
         LOG,
     )
     assert announcer.speech_for(CARD)
@@ -232,6 +245,7 @@ def test_the_same_airframe_as_another_flight_is_announced_again(tmp_path):
         INSTANT,
         SpeechClips(KeptFiles(tmp_path, "speech/", 5, ".wav"), CountingSynth()),
         Announced(),
+        EVERY_CARD,
         LOG,
     )
     announcer.speech_for(CARD)
@@ -311,6 +325,7 @@ def test_the_announcement_says_where_the_plane_will_be_when_the_words_are_heard(
         timing,
         SpeechClips(KeptFiles(tmp_path, "speech/", 5, ".wav"), synth),
         Announced(),
+        EVERY_CARD,
         LOG,
     )
     announcer.speech_for(card)
@@ -372,6 +387,7 @@ def test_a_card_that_goes_up_before_its_route_is_known_is_announced_once_it_is(t
         INSTANT,
         SpeechClips(KeptFiles(tmp_path, "speech/", 5, ".wav"), synth),
         Announced(),
+        EVERY_CARD,
         LOG,
     )
     early = {**CARD, "callsign": None, "flightNumber": None, "origin": None, "destination": None}
@@ -389,6 +405,7 @@ def test_a_flight_with_nothing_to_say_is_not_announced(tmp_path):
         INSTANT,
         SpeechClips(KeptFiles(tmp_path, "speech/", 5, ".wav"), synth),
         Announced(),
+        EVERY_CARD,
         LOG,
     )
     assert announcer.speech_for({**CARD, "callsign": None, "flightNumber": None}) is None
@@ -454,3 +471,24 @@ def test_a_notable_aircraft_says_who_it_belongs_to():
     assert wording.text(private) == "G P O P S, Dassault Falcon 7X, belonging to A Pop Star."
     routed = {**CARD, "owner": "A Football Club"}
     assert wording.text(routed) == "F R, 2 0 S W, from Alicante, to London Stansted, belonging to A Football Club."
+
+
+class Destined:
+    def includes(self, card: dict[str, Any]) -> bool:
+        return bool(card.get("destination"))
+
+
+def test_a_plane_left_out_by_the_rule_is_shown_quietly_until_it_is_worth_saying(tmp_path):
+    synth = CountingSynth()
+    announcer = Announcer(
+        AnnouncementWording(LONDON, NOWHERE),
+        NOWHERE,
+        INSTANT,
+        SpeechClips(KeptFiles(tmp_path, "speech/", 5, ".wav"), synth),
+        Announced(),
+        Destined(),
+        LOG,
+    )
+    assert announcer.speech_for({**CARD, "destination": None}) is None
+    assert not synth.texts
+    assert announcer.speech_for(CARD)

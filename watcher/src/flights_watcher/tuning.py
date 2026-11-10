@@ -157,6 +157,7 @@ class Tuning:
     showing_start_seconds: float
     speech_clips_kept: int
     overhead_now_km: float
+    heard_below_km: float
     announced_kept_for: timedelta
     speech_url_prefix: str
     said_as_words: dict[str, str]
@@ -256,6 +257,7 @@ class Tuning:
             showing_start_seconds=speech.number("showing_start_seconds"),
             speech_clips_kept=speech.whole("clips_kept"),
             overhead_now_km=speech.number("overhead_now_km"),
+            heard_below_km=speech.number("heard_below_km"),
             announced_kept_for=timedelta(hours=speech.number("announced_kept_hours")),
             speech_url_prefix=speech.text("url_prefix"),
             said_as_words=speech.words("said_as"),

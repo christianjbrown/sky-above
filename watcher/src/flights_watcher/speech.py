@@ -322,6 +322,10 @@ class ClipMaker(Protocol):
     def url_for(self, text: str) -> str: ...
 
 
+class SpokenRule(Protocol):
+    def includes(self, card: dict[str, Any]) -> bool: ...
+
+
 class Announcer:
     """Announces the nearest plane each time a new one takes over, once per flight, as
     soon as its card has something to say about it: one that was announced and
@@ -331,7 +335,8 @@ class Announcer:
     launched afresh for the same plane gets no clip to play a second time, even after a
     restart, since the flights announced are kept (see RememberedFlights). Where the
     plane is gets worked out for when those words will be heard, and whether it is
-    overhead yet for when the whole announcement has been."""
+    overhead yet for when the whole announcement has been. A plane the rule leaves out is
+    shown without a word, until an update finds it worth saying (see audible)."""
 
     def __init__(
         self,
@@ -340,9 +345,11 @@ class Announcer:
         timing: SpeechTiming,
         clips: ClipMaker,
         announced: AnnouncedFlights,
+        spoken: SpokenRule,
         logger: logging.Logger,
     ) -> None:
         self._wording = wording
+        self._spoken = spoken
         self._arrival = arrival
         self._timing = timing
         self._clips = clips
@@ -359,7 +366,7 @@ class Announcer:
             self._hex, self._url, self._settled = card["hex"], None, False
         # A card can go up before the plane's callsign or route is known, so it is
         # announced on the first update that has something to say, not only the first one.
-        lead_in = None if self._settled else self._wording.lead_in(card)
+        lead_in = None if self._settled or not self._spoken.includes(card) else self._wording.lead_in(card)
         if lead_in is not None:
             # The same airframe back hours later as another flight is worth announcing.
             flight = f"{card['hex']}/{card.get('callsign')}"
