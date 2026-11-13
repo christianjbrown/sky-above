@@ -85,10 +85,10 @@ launch_seconds = 5
 host = "0.0.0.0"
 
 [history]
-# Every plane that gets the card is kept in history_file, for good. The history page
-# lists this many of the latest, and this many of the latest famous owners' planes.
-recent_listed = 200
-famous_listed = 500
+# Every plane that gets the card is kept in history_file for the /history page. Airline
+# flights, the bulk of them, are forgotten after this long. Famous owners' planes, private
+# ones, the military, police and air ambulances are rare enough to keep for good.
+airlines_kept_days = 90
 
 [speech]
 timeout_seconds = 15

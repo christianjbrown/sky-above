@@ -182,5 +182,4 @@ def test_what_the_card_shows_goes_into_the_history_the_live_page_serves(tmp_path
         page = UrllibJsonHttp("test", 2).get_json(f"http://127.0.0.1:{port}/history.json")
     finally:
         live_server.stop()
-    assert [row["owner"] for row in page["famous"]] == ["A Pop Star"]
-    assert [row["hex"] for row in page["recent"]] == ["abc123"]
+    assert [(row["hex"], row["kind"], row["owner"]) for row in page["shown"]] == [("abc123", "private-plane", "A Pop Star")]

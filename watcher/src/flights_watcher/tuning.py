@@ -151,8 +151,7 @@ class Tuning:
     chime_seconds: float
     cast_launch_seconds: float
     live_host: str
-    history_recent_listed: int
-    history_famous_listed: int
+    history_airlines_kept: timedelta
     speech_timeout_seconds: float
     spoken_chars_per_second: float
     clip_making_ratio: float
@@ -254,8 +253,7 @@ class Tuning:
             chime_seconds=cast.number("chime_seconds"),
             cast_launch_seconds=cast.number("launch_seconds"),
             live_host=live.text("host"),
-            history_recent_listed=history.whole("recent_listed"),
-            history_famous_listed=history.whole("famous_listed"),
+            history_airlines_kept=timedelta(days=history.number("airlines_kept_days")),
             speech_timeout_seconds=speech.number("timeout_seconds"),
             spoken_chars_per_second=speech.number("spoken_chars_per_second"),
             clip_making_ratio=speech.number("clip_making_ratio"),

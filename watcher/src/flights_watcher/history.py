@@ -6,10 +6,10 @@ It never leaves the Pi, apart from the page on the home network that reads it ba
 
 import logging
 import sqlite3
-from collections.abc import Sequence
 from contextlib import closing
 from dataclasses import asdict, dataclass, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from typing import Any, Protocol
 
 from flights_watcher.clock import Clock
@@ -18,19 +18,34 @@ from flights_watcher.clock import Clock
 PLANES = "planes"
 
 
+class Kind(StrEnum):
+    """What sort of flight it was, for the history page to filter by."""
+
+    AIRLINE = "airline"
+    MILITARY = "military"
+    POLICE = "police"
+    AMBULANCE = "ambulance"
+    PRIVATE_HELICOPTER = "private-helicopter"
+    PRIVATE_PLANE = "private-plane"
+
+
+# The card's service kinds that are kinds of their own here.
+SERVICE_KINDS = {"military": Kind.MILITARY, "police": Kind.POLICE, "ambulance": Kind.AMBULANCE}
+
+
 @dataclass(frozen=True)
 class Shown:
     """One plane's time on the card, from when it took the screen."""
 
     hex: str
     shown_at: str
+    kind: str
     callsign: str | None
     flight_number: str | None
     registration: str | None
     aircraft: str | None
     type_code: str | None
     airline: str | None
-    service: str | None
     origin: str | None
     destination: str | None
     owner: str | None
@@ -41,16 +56,25 @@ class Shown:
 
 
 _COLUMNS = (
-    "hex, shown_at, callsign, flight_number, registration, aircraft, type_code, airline, service, "
+    "hex, shown_at, kind, callsign, flight_number, registration, aircraft, type_code, airline, "
     "origin, destination, owner, owner_category, emergency, closest_km, lowest_ft"
 )
-_KEEP = (
-    f"INSERT OR REPLACE INTO shown ({_COLUMNS}) VALUES (:hex, :shown_at, :callsign, :flight_number, :registration, "  # noqa: S608
-    ":aircraft, :type_code, :airline, :service, :origin, :destination, :owner, :owner_category, :emergency, "
-    ":closest_km, :lowest_ft)"
+_TABLE = (
+    "CREATE TABLE IF NOT EXISTS shown ("
+    "hex TEXT NOT NULL, shown_at TEXT NOT NULL, kind TEXT NOT NULL, callsign TEXT, flight_number TEXT, "
+    "registration TEXT, aircraft TEXT, type_code TEXT, airline TEXT, origin TEXT, destination TEXT, "
+    "owner TEXT, owner_category TEXT, emergency TEXT, closest_km REAL NOT NULL, lowest_ft INTEGER, "
+    "PRIMARY KEY (hex, shown_at))"
 )
-_RECENT = f"SELECT {_COLUMNS} FROM shown ORDER BY shown_at DESC LIMIT ?"  # noqa: S608 - no outside input
-_FAMOUS = f"SELECT {_COLUMNS} FROM shown WHERE owner IS NOT NULL ORDER BY shown_at DESC LIMIT ?"  # noqa: S608 - no outside input
+_INDEX = "CREATE INDEX IF NOT EXISTS shown_at ON shown (shown_at)"
+_KEEP = (
+    f"INSERT OR REPLACE INTO shown ({_COLUMNS}) VALUES (:hex, :shown_at, :kind, :callsign, :flight_number, "  # noqa: S608
+    ":registration, :aircraft, :type_code, :airline, :origin, :destination, :owner, :owner_category, "
+    ":emergency, :closest_km, :lowest_ft)"
+)
+_ALL = f"SELECT {_COLUMNS} FROM shown ORDER BY shown_at DESC"  # noqa: S608 - no outside input
+# Only airline flights are forgotten: everything else is rare enough to keep for good.
+_FORGET = "DELETE FROM shown WHERE shown_at < ? AND kind = ?"
 
 
 class ShownStore(Protocol):
@@ -58,12 +82,14 @@ class ShownStore(Protocol):
         """Adds a plane's time on the card, or replaces what was kept for it so far."""
         ...
 
-    def recent(self, limit: int) -> list[Shown]:
-        """The latest planes shown, newest first."""
+    def everything(self) -> list[Shown]:
+        """Every plane kept, newest first."""
         ...
 
-    def famous(self, limit: int) -> list[Shown]:
-        """The latest planes shown that belong to somebody famous, newest first."""
+
+class ForgettableStore(ShownStore, Protocol):
+    def forget_airlines_before(self, cutoff: datetime) -> None:
+        """Drops the airline flights shown before cutoff, keeping everything rarer."""
         ...
 
 
@@ -76,42 +102,54 @@ class SqliteShownStore:
         self._logger = logger
 
     def keep(self, shown: Shown) -> None:
-        try:
-            with closing(self._connect()) as db, db:
-                db.execute(_KEEP, asdict(shown))
-        except sqlite3.Error as error:
-            self._logger.warning("could not keep %s in the history: %s", shown.hex, error)
+        self._write(_KEEP, asdict(shown), f"could not keep {shown.hex} in the history")
 
-    def recent(self, limit: int) -> list[Shown]:
-        return self._select(_RECENT, limit)
+    def forget_airlines_before(self, cutoff: datetime) -> None:
+        self._write(_FORGET, (_stamp(cutoff), Kind.AIRLINE), "could not forget old flights")
 
-    def famous(self, limit: int) -> list[Shown]:
-        return self._select(_FAMOUS, limit)
-
-    def _select(self, query: str, limit: int) -> list[Shown]:
+    def everything(self) -> list[Shown]:
         try:
             with closing(self._connect()) as db:
-                rows = db.execute(query, (limit,)).fetchall()
+                db.row_factory = sqlite3.Row
+                rows = db.execute(_ALL).fetchall()
         except sqlite3.Error as error:
             self._logger.warning("could not read the history: %s", error)
             return []
-        return [Shown(*row) for row in rows]
+        return [Shown(**dict(row)) for row in rows]
+
+    def _write(self, statement: str, values: Any, failure: str) -> None:
+        try:
+            with closing(self._connect()) as db, db:
+                db.execute(statement, values)
+        except sqlite3.Error as error:
+            self._logger.warning("%s: %s", failure, error)
 
     def _connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self._path)
         try:
-            db.execute(
-                "CREATE TABLE IF NOT EXISTS shown ("
-                "hex TEXT NOT NULL, shown_at TEXT NOT NULL, callsign TEXT, flight_number TEXT, registration TEXT, "
-                "aircraft TEXT, type_code TEXT, airline TEXT, service TEXT, origin TEXT, destination TEXT, "
-                "owner TEXT, owner_category TEXT, emergency TEXT, closest_km REAL NOT NULL, lowest_ft INTEGER, "
-                "PRIMARY KEY (hex, shown_at))"
-            )
-            db.execute("CREATE INDEX IF NOT EXISTS shown_owner ON shown (owner, shown_at)")
+            db.execute(_TABLE)
+            db.execute(_INDEX)
         except sqlite3.Error:
             db.close()
             raise
         return db
+
+
+class Forgetting:
+    """Keeps planes in a store, and each time forgets the airline flights older than kept, so
+    the history never outgrows the Pi."""
+
+    def __init__(self, store: ForgettableStore, kept: timedelta, clock: Clock) -> None:
+        self._store = store
+        self._kept = kept
+        self._clock = clock
+
+    def keep(self, shown: Shown) -> None:
+        self._store.keep(shown)
+        self._store.forget_airlines_before(self._clock.now() - self._kept)
+
+    def everything(self) -> list[Shown]:
+        return self._store.everything()
 
 
 class ShownHistory:
@@ -155,15 +193,14 @@ def _shown(card: dict[str, Any], now: datetime) -> Shown:
     emergency = card.get("emergency")
     return Shown(
         hex=card["hex"],
-        # In UTC, so the newest sorts first across a change of the clocks.
-        shown_at=now.astimezone(UTC).isoformat(timespec="seconds"),
+        shown_at=_stamp(now),
+        kind=_kind(card),
         callsign=card.get("callsign"),
         flight_number=card.get("flightNumber"),
         registration=card.get("registration"),
         aircraft=card.get("aircraft"),
         type_code=card.get("typeCode"),
         airline=card.get("airline"),
-        service=card.get("service"),
         origin=_place(card.get("origin")),
         destination=_place(card.get("destination")),
         owner=card.get("owner"),
@@ -172,6 +209,24 @@ def _shown(card: dict[str, Any], now: datetime) -> Shown:
         closest_km=card["distanceKm"],
         lowest_ft=card.get("altitudeFt"),
     )
+
+
+def _stamp(moment: datetime) -> str:
+    """In UTC, so the newest sorts first across a change of the clocks."""
+    return moment.astimezone(UTC).isoformat(timespec="seconds")
+
+
+def _kind(card: dict[str, Any]) -> Kind:
+    """A service or military plane is that; a famous owner's plane, or one with no airline,
+    is private, whoever flies it."""
+    service = SERVICE_KINDS.get(card.get("service") or "")
+    if service:
+        return service
+    if card.get("military"):
+        return Kind.MILITARY
+    if card.get("airline") and not card.get("owner"):
+        return Kind.AIRLINE
+    return Kind.PRIVATE_HELICOPTER if card.get("helicopter") else Kind.PRIVATE_PLANE
 
 
 def _closer(shown: Shown, card: dict[str, Any]) -> Shown:
@@ -189,16 +244,10 @@ def _place(airport: dict[str, Any] | None) -> str | None:
 
 
 class HistoryPage:
-    """The history for the live server: the latest planes shown, and the latest famous ones."""
+    """The whole history for the live server, newest first, for the page to filter."""
 
-    def __init__(self, store: ShownStore, recent: int, famous: int) -> None:
+    def __init__(self, store: ShownStore) -> None:
         self._store = store
-        self._recent = recent
-        self._famous = famous
 
     def latest(self) -> dict[str, Any]:
-        return {"recent": _rows(self._store.recent(self._recent)), "famous": _rows(self._store.famous(self._famous))}
-
-
-def _rows(shown: Sequence[Shown]) -> list[dict[str, Any]]:
-    return [asdict(s) for s in shown]
+        return {"shown": [asdict(s) for s in self._store.everything()]}

@@ -57,7 +57,7 @@ from flights_watcher.followed_news import (
 )
 from flights_watcher.following import FollowedFlights
 from flights_watcher.heard import SpeechTiming
-from flights_watcher.history import HistoryPage, ShownHistory, SqliteShownStore
+from flights_watcher.history import Forgetting, HistoryPage, ShownHistory, SqliteShownStore
 from flights_watcher.http import JsonHttp, UrllibBytesHttp, UrllibJsonHttp, UrllibTextHttp
 from flights_watcher.live import LatestCard, LiveServer
 from flights_watcher.lookups import (
@@ -343,12 +343,14 @@ def display_for(
     else:
         logger.info("CAST_APP_ID is empty, so planes are logged rather than cast")
         display = LoggingDisplay(logger)
-    shown = SqliteShownStore(str(pathlib.Path(settings.state_dir) / tuning.history_file), logger)
+    shown = Forgetting(
+        SqliteShownStore(str(pathlib.Path(settings.state_dir) / tuning.history_file), logger), tuning.history_airlines_kept, clock
+    )
     display = FanOutDisplay([display, ShownHistory(shown, clock)])
     live_server: LiveServer | None = None
     if settings.live_port is not None:
         latest = LatestCard()
-        history = HistoryPage(shown, tuning.history_recent_listed, tuning.history_famous_listed)
+        history = HistoryPage(shown)
         # All interfaces, so the receiver container can reach it through the host.
         live_server = LiveServer(
             {"/planes.json": latest, "/status.json": status, "/history.json": history}, tuning.live_host, settings.live_port, logger
