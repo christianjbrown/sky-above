@@ -13,12 +13,12 @@
     <nav><a href="/">Card</a><a href="/history">History</a><a href="/flights" aria-current="page">Flights</a></nav>
     <p class="eyebrow">Sky Above</p>
     <h1>Flights it knows</h1>
-    <p>Every flight it has looked up and remembers, newest first. A remembered route is used without asking again until it's due a re-check.</p>
+    <p>Every flight it has looked up and remembers, newest first. A remembered route is used without asking again for 30 days, or until the airlines' timetables change, then checked the next time the flight comes by.</p>
     <p id="flights-status" class="status">Reading the flights&hellip;</p>
 
     <form class="filters" id="filters">
       <label class="chip"><input type="checkbox" name="state" value="fresh" checked><span>Up to date<span class="count" data-count="fresh"></span></span></label>
-      <label class="chip"><input type="checkbox" name="state" value="stale" checked><span>Due a re-check<span class="count" data-count="stale"></span></span></label>
+      <label class="chip"><input type="checkbox" name="state" value="stale" checked><span>Will be checked next time<span class="count" data-count="stale"></span></span></label>
       <input class="search" type="search" name="search" placeholder="Flight, callsign, airline, airport" aria-label="Search">
       <details class="more" hidden>
         <summary>Airlines<span class="count" data-airline-count></span></summary>

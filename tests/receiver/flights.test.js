@@ -58,9 +58,9 @@ describe("the flights page", () => {
     expect(rows()[0]).toEqual(["BA879", "BAW879", "British Airways", "Bucharest (OTP)", "London (LHR)", lookedUp, "Up to date"]);
     expect(rows().map((r) => [r[0], r[2], r[3], r[4], r[6]])).toEqual([
       ["BA879", "British Airways", "Bucharest (OTP)", "London (LHR)", "Up to date"],
-      ["BA483", "British Airways", "El Prat (BCN)", "London", "Due a re-check"],
+      ["BA483", "British Airways", "El Prat (BCN)", "London", "Will be checked next time"],
       ["RYR78VA", "Ryanair", "CRL", "-", "Up to date"],
-      ["XYZ1", "-", "-", "London (LHR)", "Due a re-check"]
+      ["XYZ1", "-", "-", "London (LHR)", "Will be checked next time"]
     ]);
     expect([count("fresh"), count("stale")]).toEqual(["2", "2"]);
     expect(summary()).toBe("4 of 4 flights");

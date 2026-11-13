@@ -292,9 +292,10 @@ and at a few hundred bytes a plane that's nothing for the SD card. The same data
 ### Flights it knows 🗂️
 
 Every route it looks up (from FlightAware, with `AEROAPI_KEY` set) is remembered on the Pi, so the
-same flights passing every day only cost a lookup once a week. Open
+same flights passing every day only cost a lookup once a month (or when the airlines' timetables
+change). Open
 `http://skyabove.local:8090/flights` to see them all: flight number, callsign, airline, from and to,
-when it was looked up, and whether it's still trusted or due a re-check next time it comes by.
+when it was looked up, and whether it's still trusted or will be checked again next time it comes by.
 Filter by airline (the chips fold away once there are lots) or status, or search for an airport.
 It still works with the key taken out, showing whatever was remembered while there was credit.
 
