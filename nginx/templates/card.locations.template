@@ -50,3 +50,14 @@ location = /live/planes.json {
     proxy_pass http://host.docker.internal:${LIVE_PORT}/planes.json;
     add_header Cache-Control no-store always;
 }
+
+# Every plane the card has shown, for the history page.
+location = /history {
+    try_files /history.html =404;
+    add_header Cache-Control no-cache always;
+}
+
+location = /live/history.json {
+    proxy_pass http://host.docker.internal:${LIVE_PORT}/history.json;
+    add_header Cache-Control no-store always;
+}

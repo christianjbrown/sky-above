@@ -29,6 +29,7 @@ your TV or smart display shows who it is and where it's headed, and reads it out
   diving or climbing far faster than any normal flight for most of a minute. They go red, take the screen until it's
   over, and get read out a bit louder
 - 🗺️ A live map of every plane nearby
+- 📜 A history page of everything it's shown, to filter by airline, military, police, air ambulance, private and famous
 - 🏠 Your location never leaves the house
 
 ## How it works
@@ -271,6 +272,23 @@ article after a `|`, name it after that instead (`charles-iii.jpg`). JPG, PNG, W
 A picture here wins over Wikipedia's and sits whole on white, like an airline logo. The next card
 picks it up, and it's gitignored too, like `own-logos/`.
 
+## What flew over 📜
+
+Every plane that gets the card goes into a history on the Pi: when it showed up, the flight, where
+it was going, the aircraft, how close and how low it came, and, for famous owners' planes, who
+they belong to and what plane-alert-db lists them as. Open `http://skyabove.local:8090/history` on
+your desktop to see it. ✈️
+
+Filter it however you like, ticking as many as you want: airlines, military, police, air
+ambulances, private helicopters and private planes, a chip for each airline it has seen, and
+🌟 **Famous only** for "did anyone interesting fly over?". There's a search box too, for a flight,
+an owner, an aircraft or a place.
+
+It never leaves the Pi. Airline flights are the bulk of it, so they're forgotten after 90 days
+(`airlines_kept_days` in the tunings). Everything rarer, famous planes included, stays for good,
+and at a few hundred bytes a plane that's nothing for the SD card. The same data is at
+`/live/history.json` if you'd like to do something of your own with it.
+
 ## Good to know
 
 - 🤫 **Quiet hours.** Nothing on the screen from midnight to 8am, except helicopters and military
@@ -315,6 +333,7 @@ Run these on the Pi, from `~/sky-above`:
 | Update Sky Above | `git pull && docker compose up -d --build` |
 | Have it update itself | `tools/install-auto-deploy.sh` (once) |
 | See what it updated | `journalctl -t sky-above-deploy` |
+| See what flew over | open `http://skyabove.local:8090/history` |
 | Update everything else | `docker compose pull && docker compose up -d` |
 | Check the power supply | `vcgencmd get_throttled` (0x0 is good) |
 
