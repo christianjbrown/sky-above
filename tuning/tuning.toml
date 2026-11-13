@@ -23,10 +23,13 @@ operator_ttl_days = 30
 # A callsign with nothing in the air yet may just be a plane whose take-off has not
 # reached FlightAware, so it is asked about again sooner than a known route.
 no_route_ttl_minutes = 10
-# Answers kept on disk in STATE_DIR. A route is trusted for 30 days, or until the
-# timetables change, which is when most callsigns start flying somewhere else; an airline's
-# name for a year. Past that they are asked for again the next time the flight comes by.
-route_kept_fresh_days = 30
+# Answers kept on disk in STATE_DIR. A route is trusted until the timetables change, which is
+# when most callsigns start flying somewhere else, or for route_kept_fresh_days if that comes
+# first; an airline's name for a year. Past that they are asked for again the next time the
+# flight comes by. 180 days leaves the timetable changes to decide, so the month's lookups go
+# on flights it has never seen rather than re-checking ones it knows; lower it once the
+# flights overhead fit comfortably in the monthly allowance, so mid-season changes are caught.
+route_kept_fresh_days = 180
 operator_kept_fresh_days = 365
 # Airlines that write their own flight numbers with the ICAO code: easyJet and its
 # European and Swiss arms all sell and board as EZY, never U2, EC or DS.

@@ -1,5 +1,5 @@
 """Lookup answers kept on disk, so the same flights passing every day are asked about
-once a month rather than every time, and still have a route when FlightAware cannot be reached."""
+once a season rather than every time, and still have a route when FlightAware cannot be reached."""
 
 import json
 import logging
