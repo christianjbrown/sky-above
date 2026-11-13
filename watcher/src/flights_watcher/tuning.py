@@ -144,12 +144,15 @@ class Tuning:
     paths_file: str
     misses_file: str
     notable_file: str
+    history_file: str
     # Each airport's code with the city to say for it.
     airport_cities: dict[str, str]
     cast_retry_seconds: float
     chime_seconds: float
     cast_launch_seconds: float
     live_host: str
+    history_recent_listed: int
+    history_famous_listed: int
     speech_timeout_seconds: float
     spoken_chars_per_second: float
     clip_making_ratio: float
@@ -226,7 +229,7 @@ class Tuning:
         airports, cast, live, speech = root.table("airports"), root.table("cast"), root.table("live"), root.table("speech")
         surroundings, approach, paths = root.table("map"), root.table("approach"), root.table("paths")
         followed, emergency, services = root.table("followed"), root.table("emergency"), root.table("services")
-        notable, portraits = root.table("notable"), root.table("portraits")
+        notable, portraits, history = root.table("notable"), root.table("portraits"), root.table("history")
         tuning = cls(
             user_agent=http.text("user_agent"),
             http_timeout_seconds=http.number("timeout_seconds"),
@@ -245,11 +248,14 @@ class Tuning:
             paths_file=state.text("paths_file"),
             misses_file=state.text("misses_file"),
             notable_file=state.text("notable_file"),
+            history_file=state.text("history_file"),
             airport_cities={code: city for city, codes in airports.lists("cities").items() for code in codes},
             cast_retry_seconds=cast.number("retry_seconds"),
             chime_seconds=cast.number("chime_seconds"),
             cast_launch_seconds=cast.number("launch_seconds"),
             live_host=live.text("host"),
+            history_recent_listed=history.whole("recent_listed"),
+            history_famous_listed=history.whole("famous_listed"),
             speech_timeout_seconds=speech.number("timeout_seconds"),
             spoken_chars_per_second=speech.number("spoken_chars_per_second"),
             clip_making_ratio=speech.number("clip_making_ratio"),

@@ -57,6 +57,7 @@ from flights_watcher.followed_news import (
 )
 from flights_watcher.following import FollowedFlights
 from flights_watcher.heard import SpeechTiming
+from flights_watcher.history import HistoryPage, ShownHistory, SqliteShownStore
 from flights_watcher.http import JsonHttp, UrllibBytesHttp, UrllibJsonHttp, UrllibTextHttp
 from flights_watcher.live import LatestCard, LiveServer
 from flights_watcher.lookups import (
@@ -342,11 +343,16 @@ def display_for(
     else:
         logger.info("CAST_APP_ID is empty, so planes are logged rather than cast")
         display = LoggingDisplay(logger)
+    shown = SqliteShownStore(str(pathlib.Path(settings.state_dir) / tuning.history_file), logger)
+    display = FanOutDisplay([display, ShownHistory(shown, clock)])
     live_server: LiveServer | None = None
     if settings.live_port is not None:
         latest = LatestCard()
+        history = HistoryPage(shown, tuning.history_recent_listed, tuning.history_famous_listed)
         # All interfaces, so the receiver container can reach it through the host.
-        live_server = LiveServer({"/planes.json": latest, "/status.json": status}, tuning.live_host, settings.live_port, logger)
+        live_server = LiveServer(
+            {"/planes.json": latest, "/status.json": status, "/history.json": history}, tuning.live_host, settings.live_port, logger
+        )
         display = FanOutDisplay([display, latest])
     # Lets the card leave the flag off places in home's own country. Near a border the
     # nearest airport can be in the next country, so HOME_COUNTRY says for sure.

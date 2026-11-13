@@ -40,6 +40,7 @@ announced_file = "announced.json"
 paths_file = "paths.json"
 misses_file = "missed.json"
 notable_file = "plane-alert-db.csv"
+history_file = "history.sqlite3"
 
 [airports.cities]
 # Airports whose city in the route services is not the one people would say, mostly
@@ -82,6 +83,12 @@ launch_seconds = 5
 # Where the live card listens. All interfaces, so the receiver container can reach it
 # through the host.
 host = "0.0.0.0"
+
+[history]
+# Every plane that gets the card is kept in history_file, for good. The history page
+# lists this many of the latest, and this many of the latest famous owners' planes.
+recent_listed = 200
+famous_listed = 500
 
 [speech]
 timeout_seconds = 15
