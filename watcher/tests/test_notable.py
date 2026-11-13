@@ -116,9 +116,10 @@ def test_cards_say_who_a_notable_plane_belongs_to():
     assert cards.card(Sighting(plane("abc123"), 1.0)) == {
         "hex": "abc123",
         "owner": "A Pop Star",
+        "ownerCategory": "Don't you know who I am?",
         "ownerPortrait": "https://example.com/A Pop Star.jpg",
     }
-    assert cards.card(Sighting(plane("def456"), 1.0)) == {"hex": "def456", "owner": None, "ownerPortrait": None}
+    assert cards.card(Sighting(plane("def456"), 1.0)) == {"hex": "def456", "owner": None, "ownerCategory": None, "ownerPortrait": None}
 
 
 def test_an_owner_is_looked_up_by_their_article_when_it_has_another_name():
