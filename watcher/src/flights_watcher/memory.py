@@ -55,6 +55,16 @@ class SqliteAnswerStore:
         except sqlite3.Error as error:
             self._logger.warning("could not keep the %s answer for %s: %s", self._kind, key, error)
 
+    def saved(self) -> list[tuple[str, datetime]]:
+        """Every key kept, with when its answer was saved, newest first."""
+        try:
+            with closing(self._connect()) as db:
+                rows = db.execute("SELECT key, saved_at FROM answers WHERE kind = ? ORDER BY saved_at DESC", (self._kind,)).fetchall()
+        except sqlite3.Error as error:
+            self._logger.warning("could not list the %s answers: %s", self._kind, error)
+            return []
+        return [(key, datetime.fromisoformat(saved_at)) for key, saved_at in rows]
+
     def _connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(self._path)
         try:

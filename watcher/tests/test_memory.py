@@ -123,6 +123,16 @@ def test_an_unreadable_file_counts_as_empty(tmp_path):
     store = SqliteAnswerStore(str(tmp_path / "broken.sqlite3"), "route", LOG)
     assert store.get("BAW879") is None
     store.put("BAW879", {}, datetime(2026, 11, 2))
+    assert store.saved() == []
+
+
+def test_a_store_lists_its_own_kind_newest_first(tmp_path):
+    path = str(tmp_path / "a.sqlite3")
+    routes = SqliteAnswerStore(path, "route", LOG)
+    routes.put("BAW879", {}, datetime(2026, 11, 2, 9, 0))
+    routes.put("EZY12AB", {}, datetime(2026, 11, 3, 9, 0))
+    SqliteAnswerStore(path, "operator", LOG).put("BAW", "British Airways", datetime(2026, 11, 4))
+    assert routes.saved() == [("EZY12AB", datetime(2026, 11, 3, 9, 0)), ("BAW879", datetime(2026, 11, 2, 9, 0))]
 
 
 def test_the_timetable_changeover_makes_routes_stale():
