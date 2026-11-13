@@ -101,9 +101,9 @@ overhead_now_km = 0.5
 # lower than this, so it can be heard. Air ambulances, the police, the military and famous
 # owners' planes are announced wherever they are; anything else is shown without a word.
 heard_below_km = 5
-# Flights already announced, so one that drops back to second or leaves and returns stays
-# quiet. Longer than any flight is in sight, so a plane is introduced once whatever happens.
-announced_kept_hours = 6
+# Flights already announced, so one that drops back to second or leaves and returns within
+# this long stays quiet. A plane still in sight after that is introduced again.
+announced_kept_hours = 1
 # Where nginx serves the clip folder, relative to the receiver page.
 url_prefix = "speech/"
 
