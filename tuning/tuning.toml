@@ -40,6 +40,7 @@ announced_file = "announced.json"
 paths_file = "paths.json"
 misses_file = "missed.json"
 notable_file = "plane-alert-db.csv"
+history_file = "history.sqlite3"
 
 [airports.cities]
 # Airports whose city in the route services is not the one people would say, mostly
@@ -83,6 +84,12 @@ launch_seconds = 5
 # through the host.
 host = "0.0.0.0"
 
+[history]
+# Every plane that gets the card is kept in history_file for the /history page. Airline
+# flights, the bulk of them, are forgotten after this long. Famous owners' planes, private
+# ones, the military, police and air ambulances are rare enough to keep for good.
+airlines_kept_days = 90
+
 [speech]
 timeout_seconds = 15
 # How the announcement's timing goes, for saying where the plane will be when it is heard.
@@ -101,9 +108,9 @@ overhead_now_km = 0.5
 # lower than this, so it can be heard. Air ambulances, the police, the military and famous
 # owners' planes are announced wherever they are; anything else is shown without a word.
 heard_below_km = 5
-# Flights already announced, so one that drops back to second or leaves and returns stays
-# quiet. Longer than any flight is in sight, so a plane is introduced once whatever happens.
-announced_kept_hours = 6
+# Flights already announced, so one that drops back to second or leaves and returns within
+# this long stays quiet. A plane still in sight after that is introduced again.
+announced_kept_hours = 1
 # Where nginx serves the clip folder, relative to the receiver page.
 url_prefix = "speech/"
 

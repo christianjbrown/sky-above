@@ -170,3 +170,16 @@ def test_portraits_come_from_the_pi_first_and_nowhere_when_both_are_off(tmp_path
     assert wiring.portraits(faces, TUNING, http, FakeClock(), LOGGER).portrait("A Pop Star") is None
     # Built but not asked, as asking would start a download.
     assert wiring.notables(settings(tmp_path, NOTABLE_AIRCRAFT_URL="https://example.invalid/list.csv"), TUNING, FakeClock(), LOGGER)
+
+
+def test_what_the_card_shows_goes_into_the_history_the_live_page_serves(tmp_path):
+    display, live_server = wiring.display_for(settings(tmp_path), TUNING, WatchStatus(FakeClock()), FakeClock(), LOGGER)
+    assert live_server is not None
+    display.show({"type": "planes", "planes": [{"hex": "abc123", "distanceKm": 1.0, "owner": "A Pop Star"}]})
+    assert (tmp_path / TUNING.history_file).exists()
+    port = live_server.start()
+    try:
+        page = UrllibJsonHttp("test", 2).get_json(f"http://127.0.0.1:{port}/history.json")
+    finally:
+        live_server.stop()
+    assert [(row["hex"], row["kind"], row["owner"]) for row in page["shown"]] == [("abc123", "private-plane", "A Pop Star")]

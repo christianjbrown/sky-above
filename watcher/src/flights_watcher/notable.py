@@ -205,8 +205,8 @@ class PortraitLookup(Protocol):
 
 
 class OwnedCards:
-    """Each card with who its plane belongs to, and a picture of them, when it is a
-    notable one."""
+    """Each card with who its plane belongs to, what they are listed under, and a picture
+    of them, when it is a notable one."""
 
     def __init__(self, cards: CardMaker, notables: NotableFinder, portraits: PortraitLookup) -> None:
         self._cards = cards
@@ -218,5 +218,6 @@ class OwnedCards:
         return {
             **self._cards.card(sighting),
             "owner": notable.who if notable else None,
+            "ownerCategory": notable.category if notable else None,
             "ownerPortrait": self._portraits.portrait(notable.about) if notable else None,
         }
