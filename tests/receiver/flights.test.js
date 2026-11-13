@@ -83,6 +83,8 @@ describe("the flights page", () => {
 
   it("puts a chip for each airline, the most often seen first", () => {
     window.FlightsPage.render({ routes: KNOWN });
+    const fold = document.querySelector("details.more");
+    expect([fold.hidden, fold.open, fold.querySelector("[data-airline-count]").textContent]).toEqual([false, true, "2"]);
     const chips = [...document.querySelectorAll('#airlines input[name="airline"]')].map((input) => input.value);
     expect(chips).toEqual(["British Airways", "Ryanair"]);
   });
@@ -126,4 +128,20 @@ it("does nothing by itself on a page that is not the flights page", async () => 
   window.fetch = vi.fn();
   await load("pages", "flights");
   expect(window.fetch).not.toHaveBeenCalled();
+});
+
+describe("the airline chips", () => {
+  beforeEach(async () => {
+    document.body.innerHTML = "";
+    await load("pages", "flights");
+    mountFlights();
+  });
+
+  it("fold away when there are many, and hide when there are none", () => {
+    const fold = () => document.querySelector("details.more");
+    window.FlightsPage.render({ routes: Array.from({ length: 13 }, (_, i) => route({ airline: "Airline " + i })) });
+    expect([fold().hidden, fold().open]).toEqual([false, false]);
+    window.FlightsPage.render({ routes: [route({ airline: null })] });
+    expect(fold().hidden).toBe(true);
+  });
 });

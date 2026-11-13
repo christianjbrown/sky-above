@@ -129,6 +129,8 @@ describe("the history page", () => {
 
   it("puts a chip for each airline, the most often seen first", () => {
     window.HistoryPage.render({ shown: SKY });
+    const fold = document.querySelector("details.more");
+    expect([fold.hidden, fold.open, fold.querySelector("[data-airline-count]").textContent]).toEqual([false, true, "5"]);
     const chips = [...document.querySelectorAll('#airlines input[name="airline"]')].map((input) => input.value);
     expect(chips).toEqual(["British Airways", "easyJet", "Air Ambulance", "Police", "Royal Air Force"]);
     expect(document.querySelector("#airlines .count").textContent).toBe("2");

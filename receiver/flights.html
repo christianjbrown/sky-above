@@ -20,7 +20,10 @@
       <label class="chip"><input type="checkbox" name="state" value="fresh" checked><span>Up to date<span class="count" data-count="fresh"></span></span></label>
       <label class="chip"><input type="checkbox" name="state" value="stale" checked><span>Due a re-check<span class="count" data-count="stale"></span></span></label>
       <input class="search" type="search" name="search" placeholder="Flight, callsign, airline, airport" aria-label="Search">
-      <div class="filters airlines" id="airlines" aria-label="Airlines"></div>
+      <details class="more" hidden>
+        <summary>Airlines<span class="count" data-airline-count></span></summary>
+        <div class="filters airlines" id="airlines" aria-label="Airlines"></div>
+      </details>
     </form>
 
     <p id="flights-summary"></p>

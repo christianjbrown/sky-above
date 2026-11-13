@@ -8,6 +8,8 @@
   var TIME_FORMAT = { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" };
   // Drawing more rows than this makes a page slow, and nobody scrolls that far.
   var ROWS_DRAWN = 500;
+  // A few chips start out on show; more than this start folded away.
+  var CHIPS_OPEN = 12;
 
   function escape(text) {
     return String(text).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; });
@@ -26,7 +28,8 @@
     return Object.keys(values).length ? values : null;
   }
 
-  // A chip for each value seen, the most often seen first, into the container.
+  // A chip for each value seen, the most often seen first, into the container. The fold the
+  // container sits in shows only when there is a chip, open when there are only a few.
   function chips(container, name, values) {
     var tally = {};
     values.forEach(function (value) { if (value) { tally[value] = (tally[value] || 0) + 1; } });
@@ -35,6 +38,10 @@
       return '<label class="chip"><input type="checkbox" name="' + name + '" value="' + escape(value) + '"><span>' + escape(value) +
         '<span class="count">' + tally[value] + "</span></span></label>";
     }).join("");
+    var fold = container.closest("details");
+    fold.hidden = names.length === 0;
+    fold.open = names.length <= CHIPS_OPEN;
+    fold.querySelector("[data-airline-count]").textContent = names.length;
   }
 
   // Whether any of the row's fields contains the search, ignoring case.

@@ -59,8 +59,10 @@ p { color: var(--muted); margin: 0.3rem 0; }
   font: inherit;
 }
 .search::placeholder { color: var(--muted); }
-.airlines { flex-basis: 100%; margin: 0.2rem 0 0; font-size: 0.85rem; }
-.airlines:empty { display: none; }
+.more { flex-basis: 100%; }
+.more summary { color: var(--muted); cursor: pointer; font-size: 0.9rem; }
+.more summary .count { margin-left: 0.4rem; }
+.airlines { margin: 0.6rem 0 0; font-size: 0.85rem; }
 
 .scroll { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }

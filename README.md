@@ -29,7 +29,7 @@ your TV or smart display shows who it is and where it's headed, and reads it out
   diving or climbing far faster than any normal flight for most of a minute. They go red, take the screen until it's
   over, and get read out a bit louder
 - 🗺️ A live map of every plane nearby
-- 📜 A history page of everything it's shown, to filter by airline, military, police, air ambulance, private, famous and emergencies
+- 📜 A history page of everything it's shown, to filter by airline, military, police, air ambulance, private, famous and emergencies, and a page of every flight it has looked up
 - 🏠 Your location never leaves the house
 
 ## How it works
@@ -289,7 +289,16 @@ It never leaves the Pi. Airline flights are the bulk of it, so they're forgotten
 and at a few hundred bytes a plane that's nothing for the SD card. The same data is at
 `/live/history.json` if you'd like to do something of your own with it.
 
-Over https (`CERT_DOMAIN` set) it's at `https://<your-domain>/history` too, the same as the card.
+### Flights it knows 🗂️
+
+Every route it looks up (from FlightAware, with `AEROAPI_KEY` set) is remembered on the Pi, so the
+same flights passing every day only cost a lookup once a week. Open
+`http://skyabove.local:8090/flights` to see them all: flight number, callsign, airline, from and to,
+when it was looked up, and whether it's still trusted or due a re-check next time it comes by.
+Filter by airline (the chips fold away once there are lots) or status, or search for an airport.
+It still works with the key taken out, showing whatever was remembered while there was credit.
+
+Over https (`CERT_DOMAIN` set) both are at `https://<your-domain>/history` and `/flights` too, the same as the card.
 Typing plain `http://<your-domain>/` sends you on to https by itself, and the same goes for every
 name in `OTHER_SITES`. That needs port 80 on the Pi (`HTTP_PORT`), so nothing else there can have it. 🔒
 
@@ -338,6 +347,7 @@ Run these on the Pi, from `~/sky-above`:
 | Have it update itself | `tools/install-auto-deploy.sh` (once) |
 | See what it updated | `journalctl -t sky-above-deploy` |
 | See what flew over | open `http://skyabove.local:8090/history` |
+| See the flights it knows | open `http://skyabove.local:8090/flights` |
 | Update everything else | `docker compose pull && docker compose up -d` |
 | Check the power supply | `vcgencmd get_throttled` (0x0 is good) |
 
