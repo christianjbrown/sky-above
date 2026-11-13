@@ -23,7 +23,7 @@ def test_the_shipped_tunings_are_read_in_the_units_the_watcher_counts_in():
     assert tuning.lookup_ttl_seconds == 6 * 3600
     assert tuning.operator_ttl_seconds == 30 * 24 * 3600
     assert tuning.no_route_ttl_seconds == 600
-    assert tuning.route_kept_fresh == timedelta(days=30)
+    assert tuning.route_kept_fresh == timedelta(days=180)
     assert tuning.follow_timing.lead == timedelta(hours=4)
     assert tuning.follow_timing.position_every == 180
     assert tuning.path_likeness == Likeness(within_km=0.5, within_ft=1500, within_deg=15)
