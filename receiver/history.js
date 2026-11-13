@@ -1,5 +1,6 @@
 // The history page, at /history: every plane that has had the card, newest first, to
-// filter by what sort of flight it was, by airline, by famous owners, and by a search. It reads the
+// filter by what sort of flight it was, by airline, by famous owners, by emergencies,
+// and by a search. It reads the
 // watcher's history once when it opens; reload it for the latest.
 
 (function () {
@@ -11,6 +12,7 @@
   // Drawing more rows than this makes the page slow, and nobody scrolls that far.
   var ROWS_DRAWN = 500;
   var FAMOUS = "famous";
+  var EMERGENCY = "emergency";
   // What the watcher files an owner from the names file alone under, which says nothing.
   var NAMED = "Named";
   var KIND_NAMES = {
@@ -43,7 +45,15 @@
     if (row.origin && row.destination) { return row.origin + " to " + row.destination; }
     if (row.destination) { return "to " + row.destination; }
     if (row.origin) { return "from " + row.origin; }
-    return row.emergency;
+    return null;
+  }
+
+  // The route, and for a plane that was in an emergency, what the emergency was.
+  function routeCell(row) {
+    var where = route(row);
+    if (!row.emergency) { return text(where); }
+    var emergency = '<span class="emergency">🚨 ' + escape(row.emergency) + "</span>";
+    return where ? escape(where) + " " + emergency : emergency;
   }
 
   function closest(row) {
@@ -64,7 +74,7 @@
       '<td><span class="kind kind-' + escape(row.kind) + '">' + text(KIND_NAMES[row.kind] || row.kind) + "</span></td>" +
       "<td>" + escape(flight(row)) + "</td>" +
       "<td>" + text(row.airline) + "</td>" +
-      "<td>" + text(route(row)) + "</td>" +
+      "<td>" + routeCell(row) + "</td>" +
       "<td>" + text(aircraft || null) + "</td>" +
       "<td>" + escape(closest(row)) + "</td>" +
       "<td>" + owner(row) + "</td>" +
@@ -81,6 +91,7 @@
       // None ticked means any airline.
       airlines: Object.keys(airlines).length ? airlines : null,
       famous: form.elements.famous.checked,
+      emergency: form.elements.emergency.checked,
       search: form.elements.search.value.trim().toLowerCase()
     };
   }
@@ -89,6 +100,7 @@
     // A kind this page has no chip for, from a newer watcher, is always listed.
     if (KIND_NAMES[row.kind] && !filter.kinds[row.kind]) { return false; }
     if (filter.famous && !row.owner) { return false; }
+    if (filter.emergency && !row.emergency) { return false; }
     if (filter.airlines && !filter.airlines[row.airline]) { return false; }
     if (!filter.search) { return true; }
     return SEARCHED.some(function (key) { return row[key] != null && String(row[key]).toLowerCase().indexOf(filter.search) !== -1; });
@@ -97,9 +109,11 @@
   function counts(form) {
     var tally = {};
     tally[FAMOUS] = 0;
+    tally[EMERGENCY] = 0;
     shown.forEach(function (row) {
       tally[row.kind] = (tally[row.kind] || 0) + 1;
       if (row.owner) { tally[FAMOUS] += 1; }
+      if (row.emergency) { tally[EMERGENCY] += 1; }
     });
     form.querySelectorAll("[data-count]").forEach(function (span) { span.textContent = tally[span.dataset.count] || 0; });
   }

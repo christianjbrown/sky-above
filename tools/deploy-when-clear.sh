@@ -34,6 +34,12 @@ main() {
     fi
 
     docker compose up -d --remove-orphans
+    # nginx renders its templates only when it starts, and up leaves a receiver whose
+    # compose settings are unchanged running, so a change to nginx/ needs a restart.
+    deployed=$(cat "$deployed_file" 2>/dev/null || true)
+    if [ -z "$deployed" ] || ! git diff --quiet "$deployed" "$target" -- nginx; then
+        docker compose restart receiver
+    fi
     echo "$target" > "$deployed_file"
     echo "deployed $(git log -1 --format='%h' "$target")"
 }
