@@ -83,6 +83,8 @@ def test_a_plane_is_kept_as_soon_as_it_takes_the_card_with_everything_the_card_s
     ("extra", "kind"),
     [
         ({"airline": "easyJet"}, Kind.AIRLINE),
+        ({"callsign": "SHT9Q", "airlineCode": "SHT"}, Kind.AIRLINE),
+        ({"callsign": "GEUYM", "airlineCode": None}, Kind.PRIVATE_PLANE),
         ({"airline": "Air Ambulance", "service": "ambulance", "helicopter": True}, Kind.AMBULANCE),
         ({"airline": "Police", "service": "police", "helicopter": True}, Kind.POLICE),
         ({"airline": "Royal Air Force", "service": "military"}, Kind.MILITARY),
