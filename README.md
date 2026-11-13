@@ -290,6 +290,8 @@ and at a few hundred bytes a plane that's nothing for the SD card. The same data
 `/live/history.json` if you'd like to do something of your own with it.
 
 Over https (`CERT_DOMAIN` set) it's at `https://<your-domain>/history` too, the same as the card.
+Typing plain `http://<your-domain>/` sends you on to https by itself, and the same goes for every
+name in `OTHER_SITES`. That needs port 80 on the Pi (`HTTP_PORT`), so nothing else there can have it. 🔒
 
 ## Good to know
 

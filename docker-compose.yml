@@ -180,6 +180,7 @@ services:
     restart: unless-stopped
     ports:
       - "${RECEIVER_PORT:-8090}:80"
+      - "${HTTP_PORT:-80}:81"
       - "${HTTPS_PORT:-443}:443"
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -202,6 +203,7 @@ services:
       - ./nginx/https.sh:/docker-entrypoint.d/40-https.sh:ro
       # Kept out of templates, whose ${} filling would empty nginx's own $host.
       - ./nginx/other-site.conf:/etc/nginx/other-site.conf.in:ro
+      - ./nginx/to-https.conf:/etc/nginx/to-https.conf.in:ro
 
   # Gets and renews a Let's Encrypt certificate for CERT_DOMAIN and for each of
   # OTHER_SITES, proving it owns each name with a short-lived DNS record made
