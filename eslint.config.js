@@ -15,7 +15,8 @@ const receiverGlobals = {
   Speaker: "readonly",
   RightAway: "readonly",
   WhenHubUnmuted: "readonly",
-  HubVolume: "readonly"
+  HubVolume: "readonly",
+  PageParts: "readonly"
 };
 
 export default [
