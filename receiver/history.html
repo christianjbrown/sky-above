@@ -18,6 +18,7 @@
       --ambulance: #3ddc84;
       --police: #6aa8ff;
       --military: #c2cc7a;
+      --emergency: #ff3b3b;
       color-scheme: dark;
     }
     body {
@@ -74,6 +75,7 @@
     .kind-ambulance { color: var(--ambulance); }
     .famous { color: var(--accent); }
     .famous small { color: var(--muted); margin-left: 0.4rem; }
+    .emergency { color: var(--emergency); }
   </style>
 </head>
 <body>
@@ -91,6 +93,7 @@
       <label class="chip"><input type="checkbox" name="kind" value="private-helicopter" checked><span>Private helicopters<span class="count" data-count="private-helicopter"></span></span></label>
       <label class="chip"><input type="checkbox" name="kind" value="private-plane" checked><span>Private planes<span class="count" data-count="private-plane"></span></span></label>
       <label class="chip"><input type="checkbox" name="famous"><span>🌟 Famous only<span class="count" data-count="famous"></span></span></label>
+      <label class="chip"><input type="checkbox" name="emergency"><span>🚨 Emergencies only<span class="count" data-count="emergency"></span></span></label>
       <input class="search" type="search" name="search" placeholder="Flight, owner, aircraft, place" aria-label="Search">
       <div class="filters airlines" id="airlines" aria-label="Airlines"></div>
     </form>

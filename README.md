@@ -29,7 +29,7 @@ your TV or smart display shows who it is and where it's headed, and reads it out
   diving or climbing far faster than any normal flight for most of a minute. They go red, take the screen until it's
   over, and get read out a bit louder
 - 🗺️ A live map of every plane nearby
-- 📜 A history page of everything it's shown, to filter by airline, military, police, air ambulance, private and famous
+- 📜 A history page of everything it's shown, to filter by airline, military, police, air ambulance, private, famous and emergencies
 - 🏠 Your location never leaves the house
 
 ## How it works
@@ -281,13 +281,15 @@ your desktop to see it. ✈️
 
 Filter it however you like, ticking as many as you want: airlines, military, police, air
 ambulances, private helicopters and private planes, a chip for each airline it has seen, and
-🌟 **Famous only** for "did anyone interesting fly over?". There's a search box too, for a flight,
-an owner, an aircraft or a place.
+🌟 **Famous only** for "did anyone interesting fly over?", and 🚨 **Emergencies only** for the planes
+that were in trouble. There's a search box too, for a flight, an owner, an aircraft or a place.
 
 It never leaves the Pi. Airline flights are the bulk of it, so they're forgotten after 90 days
 (`airlines_kept_days` in the tunings). Everything rarer, famous planes included, stays for good,
 and at a few hundred bytes a plane that's nothing for the SD card. The same data is at
 `/live/history.json` if you'd like to do something of your own with it.
+
+Over https (`CERT_DOMAIN` set) it's at `https://<your-domain>/history` too, the same as the card.
 
 ## Good to know
 

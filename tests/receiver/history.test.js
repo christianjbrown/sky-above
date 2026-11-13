@@ -54,6 +54,7 @@ const SKY = [
   row({ flight_number: "BA879", airline: "British Airways", origin: "Faro (FAO)" }),
   row({ kind: "military", callsign: "ASCOT1", airline: "Royal Air Force", aircraft: "Airbus A400M" }),
   row({ kind: "police", registration: "G-POLA", airline: "Police", emergency: "General emergency" }),
+  row({ kind: "airline", flight_number: "BA1", airline: "British Airways", destination: "Paris (CDG)", emergency: "Radio failure" }),
   row({ kind: "ambulance", callsign: "HLE01", airline: "Air Ambulance" }),
   row({ kind: "private-helicopter", registration: "G-EUYM", owner: "A Racing Driver", owner_category: "Named" }),
   row({ kind: "private-plane", registration: "N123AB", aircraft: "Dassault Falcon 7X", owner: "A Pop Star", owner_category: "Don't you know who I am?" }),
@@ -80,24 +81,27 @@ describe("the history page", () => {
       .format(new Date(BASE.shown_at));
     expect(shownAt).toMatch(/^Wed, 1 Jul 2026, \d\d:00$/);
     expect(rows()[0]).toEqual([shownAt, "Airline", "U21234", "easyJet", "Alicante (ALC) to London Stansted (STN)", "Airbus A320neo, G-EZAB", "1.3 km, 3,200 ft", "-"]);
-    expect(column(4)).toEqual(["Alicante (ALC) to London Stansted (STN)", "to Paris (ORY)", "from Faro (FAO)", "-", "General emergency", "-", "-", "-", "-", "-"]);
-    expect(column(2).slice(7)).toEqual(["N123AB", "DEF456", "ABC123"]);
-    expect(column(7).slice(6, 9)).toEqual(["🌟 A Racing Driver", "🌟 A Pop StarDon't you know who I am?", "🌟 <b>Club</b>"]);
-    expect(column(1).slice(3)).toEqual(["Military", "Police", "Air ambulance", "Private helicopter", "Private plane", "Private plane", "something-new"]);
+    expect(column(4)).toEqual([
+      "Alicante (ALC) to London Stansted (STN)", "to Paris (ORY)", "from Faro (FAO)", "-", "🚨 General emergency", "to Paris (CDG) 🚨 Radio failure", "-", "-", "-", "-", "-"
+    ]);
+    expect(column(2).slice(8)).toEqual(["N123AB", "DEF456", "ABC123"]);
+    expect(column(7).slice(7, 10)).toEqual(["🌟 A Racing Driver", "🌟 A Pop StarDon't you know who I am?", "🌟 <b>Club</b>"]);
+    expect(column(1).slice(3)).toEqual(["Military", "Police", "Airline", "Air ambulance", "Private helicopter", "Private plane", "Private plane", "something-new"]);
     expect(document.querySelector("#shown b")).toBeNull();
-    expect(summary()).toBe("10 of 10 planes");
+    expect(summary()).toBe("11 of 11 planes");
   });
 
   it("counts each kind and the famous ones, and always lists a kind it has no chip for", () => {
     window.HistoryPage.render({ shown: SKY });
-    expect([count("airline"), count("military"), count("private-plane"), count("famous")]).toEqual(["3", "1", "2", "3"]);
+    expect([count("airline"), count("military"), count("private-plane"), count("famous")]).toEqual(["4", "1", "2", "3"]);
+    expect(count("emergency")).toBe("2");
     tick('input[value="private-plane"]', false);
     expect(column(1).slice(-2)).toEqual(["Private helicopter", "something-new"]);
   });
 
   it("filters by any mix of kinds, famous owners, airlines and a search", () => {
     window.HistoryPage.render({ shown: SKY.filter((r) => r.kind !== "something-new") });
-    expect(summary()).toBe("9 of 9 planes");
+    expect(summary()).toBe("10 of 10 planes");
     tick('input[value="airline"]', false);
     tick('input[value="military"]', false);
     expect(column(1)).toEqual(["Police", "Air ambulance", "Private helicopter", "Private plane", "Private plane"]);
@@ -105,7 +109,7 @@ describe("the history page", () => {
     expect(column(7)).toEqual(["🌟 A Racing Driver", "🌟 A Pop StarDon't you know who I am?", "🌟 <b>Club</b>"]);
     search("  FALCON ");
     expect(column(2)).toEqual(["N123AB"]);
-    expect(summary()).toBe("1 of 9 planes");
+    expect(summary()).toBe("1 of 10 planes");
     search("");
     tick('input[name="famous"]', false);
     tick('input[value="airline"]', true);
@@ -113,12 +117,17 @@ describe("the history page", () => {
     expect(column(2)).toEqual(["U21234", "EZY34CD"]);
     tick('input[name="airline"][value="Police"]', true);
     expect(column(2)).toEqual(["U21234", "EZY34CD", "G-POLA"]);
+    tick('input[name="emergency"]', true);
+    expect(column(2)).toEqual(["G-POLA"]);
+    tick('input[name="airline"][value="Police"]', false);
+    tick('input[name="airline"][value="easyJet"]', false);
+    expect(column(2)).toEqual(["G-POLA", "BA1"]);
   });
 
   it("puts a chip for each airline, the most often seen first", () => {
     window.HistoryPage.render({ shown: SKY });
     const chips = [...document.querySelectorAll('#airlines input[name="airline"]')].map((input) => input.value);
-    expect(chips).toEqual(["easyJet", "Air Ambulance", "British Airways", "Police", "Royal Air Force"]);
+    expect(chips).toEqual(["British Airways", "easyJet", "Air Ambulance", "Police", "Royal Air Force"]);
     expect(document.querySelector("#airlines .count").textContent).toBe("2");
   });
 
