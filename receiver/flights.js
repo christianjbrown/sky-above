@@ -24,7 +24,7 @@
   function state(row) { return row.fresh ? FRESH : STALE; }
 
   function line(row) {
-    var status = row.fresh ? "Up to date" : '<span class="stale">Due a re-check</span>';
+    var status = row.fresh ? "Up to date" : '<span class="stale">Will be checked next time</span>';
     return "<tr>" +
       "<td>" + parts.text(row.flight_number || row.callsign) + "</td>" +
       "<td>" + parts.escape(row.callsign) + "</td>" +
