@@ -3,7 +3,7 @@
 import logging
 import pathlib
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from zoneinfo import ZoneInfo
 
@@ -59,7 +59,8 @@ from flights_watcher.following import FollowedFlights
 from flights_watcher.heard import SpeechTiming
 from flights_watcher.history import Forgetting, HistoryPage, ShownHistory, SqliteShownStore
 from flights_watcher.http import JsonHttp, UrllibBytesHttp, UrllibJsonHttp, UrllibTextHttp
-from flights_watcher.live import LatestCard, LiveServer
+from flights_watcher.known_routes import KnownRoutesPage
+from flights_watcher.live import LatestCard, LiveServer, Snapshot
 from flights_watcher.lookups import (
     AdsbdbRouteLookup,
     AirportTidier,
@@ -180,7 +181,9 @@ def build(settings: Settings, tuning: Tuning, clock: Clock, logger: logging.Logg
     rare = RareKinds(settings.quiet_hours_except)
     voice = voices(settings, tuning, clock, rare, logger)
     status = WatchStatus(clock)
-    display, live_server = display_for(settings, tuning, status, clock, logger)
+    display, live_server = display_for(
+        settings, tuning, status, clock, logger, {"/routes.json": known_routes_page(settings, tuning, found, clock, logger)}
+    )
     display = FanOutDisplay([display, EndOfShowing(voice.planes), InterruptedByEmergency(voice.planes)])
     watcher = watcher_for(
         settings,
@@ -225,7 +228,7 @@ def lookups(settings: Settings, tuning: Tuning, http: JsonHttp, clock: Clock, lo
                 AeroApiRouteLookup(settings.aeroapi_url, aeroapi, operator_names, tuning.icao_numbered_airlines),
                 Memory(
                     SqliteAnswerStore(answers, "route", logger),
-                    AllFresh([YoungerThan(tuning.route_kept_fresh), SameTimetable()]),
+                    route_freshness(tuning),
                     clock,
                     logger,
                 ),
@@ -326,10 +329,28 @@ def followed_standby(
     )
 
 
+def known_routes_page(settings: Settings, tuning: Tuning, found: Lookups, clock: Clock, logger: logging.Logger) -> KnownRoutesPage:
+    """The routes kept from FlightAware, for the /flights page. Read whether or not there is a
+    key now, so what was looked up while there was credit can still be seen."""
+    kept = SqliteAnswerStore(str(pathlib.Path(settings.state_dir) / tuning.answers_file), "route", logger)
+    return KnownRoutesPage(kept, TidiedRoutes(KeptRouteLookup(kept), found.airport_tidiers), route_freshness(tuning), clock)
+
+
+def route_freshness(tuning: Tuning) -> AllFresh:
+    """How long a kept route is trusted before it is asked for again."""
+    return AllFresh([YoungerThan(tuning.route_kept_fresh), SameTimetable()])
+
+
 def display_for(
-    settings: Settings, tuning: Tuning, status: WatchStatus, clock: Clock, logger: logging.Logger
+    settings: Settings,
+    tuning: Tuning,
+    status: WatchStatus,
+    clock: Clock,
+    logger: logging.Logger,
+    pages: Mapping[str, Snapshot],
 ) -> tuple[Display, LiveServer | None]:
-    """The Cast device when there is an app to cast, else the log; and the live page if it has a port."""
+    """The Cast device when there is an app to cast, else the log; and the live page, with any
+    other pages it is given, if it has a port."""
     display: Display
     if settings.cast_app_id:
         chromecast = PyChromecastDevice(
@@ -353,7 +374,10 @@ def display_for(
         history = HistoryPage(shown)
         # All interfaces, so the receiver container can reach it through the host.
         live_server = LiveServer(
-            {"/planes.json": latest, "/status.json": status, "/history.json": history}, tuning.live_host, settings.live_port, logger
+            {"/planes.json": latest, "/status.json": status, "/history.json": history, **pages},
+            tuning.live_host,
+            settings.live_port,
+            logger,
         )
         display = FanOutDisplay([display, latest])
     # Lets the card leave the flag off places in home's own country. Near a border the

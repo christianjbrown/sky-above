@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sky Above flights</title>
+  <meta name="description" content="The flights Sky Above has looked up and remembers: who flies them and where.">
+  <meta name="theme-color" content="#0b1a33">
+  <link rel="stylesheet" href="pages.css">
+</head>
+<body>
+  <main>
+    <nav><a href="/">Card</a><a href="/history">History</a><a href="/flights" aria-current="page">Flights</a></nav>
+    <p class="eyebrow">Sky Above</p>
+    <h1>Flights it knows</h1>
+    <p>Every flight it has looked up and remembers, newest first. A remembered route is used without asking again until it's due a re-check.</p>
+    <p id="flights-status" class="status">Reading the flights&hellip;</p>
+
+    <form class="filters" id="filters">
+      <label class="chip"><input type="checkbox" name="state" value="fresh" checked><span>Up to date<span class="count" data-count="fresh"></span></span></label>
+      <label class="chip"><input type="checkbox" name="state" value="stale" checked><span>Due a re-check<span class="count" data-count="stale"></span></span></label>
+      <input class="search" type="search" name="search" placeholder="Flight, callsign, airline, airport" aria-label="Search">
+      <details class="more" hidden>
+        <summary>Airlines<span class="count" data-airline-count></span></summary>
+        <div class="filters airlines" id="airlines" aria-label="Airlines"></div>
+      </details>
+    </form>
+
+    <p id="flights-summary"></p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Flight</th><th>Callsign</th><th>Airline</th><th>From</th><th>To</th><th>Looked up</th><th>Status</th></tr></thead>
+        <tbody id="routes"></tbody>
+      </table>
+    </div>
+  </main>
+  <script src="pages.js"></script>
+  <script src="flights.js"></script>
+</body>
+</html>

@@ -217,14 +217,15 @@ def _stamp(moment: datetime) -> str:
 
 
 def _kind(card: dict[str, Any]) -> Kind:
-    """A service or military plane is that; a famous owner's plane, or one with no airline,
-    is private, whoever flies it."""
+    """A service or military plane is that. One with an airline, or flying under an airline
+    callsign when its route could not be looked up, is an airline flight, unless it is a famous
+    owner's; that, and anything flying under its registration, is private."""
     service = SERVICE_KINDS.get(card.get("service") or "")
     if service:
         return service
     if card.get("military"):
         return Kind.MILITARY
-    if card.get("airline") and not card.get("owner"):
+    if (card.get("airline") or card.get("airlineCode")) and not card.get("owner"):
         return Kind.AIRLINE
     return Kind.PRIVATE_HELICOPTER if card.get("helicopter") else Kind.PRIVATE_PLANE
 

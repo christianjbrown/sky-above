@@ -69,7 +69,7 @@ beforeEach(() => {
 describe("the history page", () => {
   beforeEach(async () => {
     document.body.innerHTML = "";
-    await load("history");
+    await load("pages", "history");
     mountHistory();
     window.HistoryPage.start(answer({ shown: [] }));
   });
@@ -97,6 +97,9 @@ describe("the history page", () => {
     expect(count("emergency")).toBe("2");
     tick('input[value="private-plane"]', false);
     expect(column(1).slice(-2)).toEqual(["Private helicopter", "something-new"]);
+    form().querySelectorAll('input[name="kind"]').forEach((input) => { input.checked = false; });
+    tick('input[value="airline"]', false);
+    expect(column(1)).toEqual(["something-new"]);
   });
 
   it("filters by any mix of kinds, famous owners, airlines and a search", () => {
@@ -126,6 +129,8 @@ describe("the history page", () => {
 
   it("puts a chip for each airline, the most often seen first", () => {
     window.HistoryPage.render({ shown: SKY });
+    const fold = document.querySelector("details.more");
+    expect([fold.hidden, fold.open, fold.querySelector("[data-airline-count]").textContent]).toEqual([false, true, "5"]);
     const chips = [...document.querySelectorAll('#airlines input[name="airline"]')].map((input) => input.value);
     expect(chips).toEqual(["British Airways", "easyJet", "Air Ambulance", "Police", "Royal Air Force"]);
     expect(document.querySelector("#airlines .count").textContent).toBe("2");
@@ -153,7 +158,7 @@ describe("the history page", () => {
 
   it("says what went wrong when the watcher cannot be read", async () => {
     await window.HistoryPage.load(answer({}, false, 502));
-    expect(document.getElementById("history-status").textContent).toBe("Could not read the history: the watcher answered 502");
+    expect(document.getElementById("history-status").textContent).toBe("Could not read it: the watcher answered 502");
     expect(document.getElementById("history-status").hidden).toBe(false);
   });
 });
@@ -161,13 +166,13 @@ describe("the history page", () => {
 it("reads the history by itself when it is loaded on its page", async () => {
   mountHistory();
   window.fetch = answer({ shown: [row({ owner: "A Football Club", kind: "private-plane" })] });
-  await load("history");
+  await load("pages", "history");
   await vi.waitFor(() => expect(rows()).toHaveLength(1));
 });
 
 it("does nothing by itself on a page that is not the history", async () => {
   document.body.innerHTML = "";
   window.fetch = vi.fn();
-  await load("history");
+  await load("pages", "history");
   expect(window.fetch).not.toHaveBeenCalled();
 });

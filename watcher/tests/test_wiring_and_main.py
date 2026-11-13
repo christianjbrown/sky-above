@@ -73,7 +73,7 @@ def test_the_hub_is_muted_through_its_chime_only_when_asked(tmp_path, monkeypatc
     wrapped = []
     monkeypatch.setattr(wiring, "CoolingOffDevice", lambda hub, *_: wrapped.append(hub) or hub)
     wiring.display_for(
-        settings(tmp_path, CAST_APP_ID="APP", MUTE_CHIME=mute, LIVE_PORT=""), TUNING, WatchStatus(FakeClock()), FakeClock(), LOGGER
+        settings(tmp_path, CAST_APP_ID="APP", MUTE_CHIME=mute, LIVE_PORT=""), TUNING, WatchStatus(FakeClock()), FakeClock(), LOGGER, {}
     )
     assert isinstance(wrapped[0], MutedLaunchDevice) is muted_launch
 
@@ -173,7 +173,7 @@ def test_portraits_come_from_the_pi_first_and_nowhere_when_both_are_off(tmp_path
 
 
 def test_what_the_card_shows_goes_into_the_history_the_live_page_serves(tmp_path):
-    display, live_server = wiring.display_for(settings(tmp_path), TUNING, WatchStatus(FakeClock()), FakeClock(), LOGGER)
+    display, live_server = wiring.display_for(settings(tmp_path), TUNING, WatchStatus(FakeClock()), FakeClock(), LOGGER, {})
     assert live_server is not None
     display.show({"type": "planes", "planes": [{"hex": "abc123", "distanceKm": 1.0, "owner": "A Pop Star"}]})
     assert (tmp_path / TUNING.history_file).exists()
@@ -183,3 +183,24 @@ def test_what_the_card_shows_goes_into_the_history_the_live_page_serves(tmp_path
     finally:
         live_server.stop()
     assert [(row["hex"], row["kind"], row["owner"]) for row in page["shown"]] == [("abc123", "private-plane", "A Pop Star")]
+
+
+def test_the_flights_page_lists_kept_routes_with_their_cities_as_the_card_says_them(tmp_path):
+    from datetime import datetime
+
+    from flights_watcher.memory import SqliteAnswerStore
+
+    full = settings(tmp_path)
+    SqliteAnswerStore(str(tmp_path / TUNING.answers_file), "route", LOGGER).put(
+        "BAW483Z",
+        {
+            "airline": "British Airways",
+            "flight_number": "BA483",
+            "origin": {"code": "HEL", "name": "Helsinki-Vantaa", "city": "Vantaa"},
+            "destination": None,
+        },
+        datetime(2026, 11, 1, 12, 0),
+    )
+    found = wiring.lookups(full, TUNING, UrllibJsonHttp("test", 1), FakeClock(), LOGGER)
+    page = wiring.known_routes_page(full, TUNING, found, FakeClock(), LOGGER).latest()
+    assert [(row["callsign"], row["origin"]["city"], row["fresh"]) for row in page["routes"]] == [("BAW483Z", "Helsinki", True)]
