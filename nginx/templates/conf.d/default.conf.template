@@ -1,5 +1,8 @@
 # Plain http on the home network, which the Hub used before https and browsers can still use.
+# Port 81 is HTTP_PORT on the Pi, where names with a certificate are sent on to https
+# instead (nginx/to-https.conf) and anything else gets the card too.
 server {
     listen 80;
+    listen 81 default_server;
     include /etc/nginx/card.locations;
 }
