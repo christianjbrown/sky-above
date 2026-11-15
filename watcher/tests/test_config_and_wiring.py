@@ -236,25 +236,6 @@ def test_the_watcher_keeps_its_state_on_a_volume():
     assert f"watcher_state:{watcher['STATE_DIR']}" in compose["services"]["watcher"]["volumes"]
 
 
-def test_plain_http_shows_the_card_unless_another_app_is_given_the_home_page():
-    compose = yaml.safe_load((REPO / "docker-compose.yml").read_text())
-    receiver = compose["services"]["receiver"]
-    assert "HOME_PORT=${HOME_PORT:-}" in receiver["environment"]
-    assert "./nginx/http-card.conf:/etc/nginx/http-card.conf.in:ro" in receiver["volumes"]
-    assert "./nginx/http-home.conf:/etc/nginx/http-home.conf.in:ro" in receiver["volumes"]
-    card = (REPO / "nginx" / "http-card.conf").read_text()
-    assert "listen 81 default_server;" in card
-    assert "include /etc/nginx/card.locations;" in card
-    home = (REPO / "nginx" / "http-home.conf").read_text()
-    assert "listen 81 default_server;" in home
-    assert "proxy_pass http://host.docker.internal:@PORT@;" in home
-    always = (REPO / "nginx" / "templates" / "conf.d" / "default.conf.template").read_text()
-    assert "default_server" not in always
-    script = (REPO / "nginx" / "https.sh").read_text()
-    assert "http_home > /etc/nginx/conf.d/http-home.conf" in script
-    assert "HOME_PORT=\n" in (REPO / ".env.example").read_text()
-
-
 def test_https_uses_the_certificate_the_certs_service_keeps():
     compose = yaml.safe_load((REPO / "docker-compose.yml").read_text())
     assert "certs:/certs" in compose["services"]["certs"]["volumes"]

@@ -1,9 +1,8 @@
 #!/bin/sh
 # Run by the nginx image before nginx starts. Switches the https server on once
 # the certs service has a certificate, and each of OTHER_SITES once it has that
-# name's, sends each of those names from plain http to https, gives everything else
-# on plain http the card or HOME_PORT's app, then checks every few hours so a new or
-# renewed certificate is picked up without a restart.
+# name's, sends each of those names from plain http to https, then checks every
+# few hours so a new or renewed certificate is picked up without a restart.
 set -eu
 
 https_on() {
@@ -12,7 +11,6 @@ https_on() {
     fi
     other_sites > /etc/nginx/conf.d/other-sites.conf
     to_https > /etc/nginx/conf.d/to-https.conf
-    http_home > /etc/nginx/conf.d/http-home.conf
 }
 
 # The names that have their certificate: CERT_DOMAIN and each of OTHER_SITES.
@@ -36,15 +34,6 @@ to_https() {
     if [ -n "${names% }" ]; then
         sed "s/@NAMES@/${names% }/" /etc/nginx/to-https.conf.in
     fi
-}
-
-# What HTTP_PORT shows for anything that is not one of those names: the app on HOME_PORT
-# when that is a port, and otherwise the card, so a typo cannot stop nginx starting.
-http_home() {
-    case "${HOME_PORT:-}" in
-        "" | *[!0-9]*) cat /etc/nginx/http-card.conf.in ;;
-        *) sed "s/@PORT@/${HOME_PORT}/g" /etc/nginx/http-home.conf.in ;;
-    esac
 }
 
 # A server for each name=port in OTHER_SITES that has its certificate, passing it
