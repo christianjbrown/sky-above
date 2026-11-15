@@ -31,6 +31,27 @@
     return end.city || end.name || end.code || "";
   }
 
+  // The browser tab's title names the flight on the card, as "BA86S Madrid to London ·
+  // Sky Above", so a tab left open on the desktop says what is overhead. With nothing
+  // on the card it is the name alone.
+  var SITE_NAME = "Sky Above";
+  var TITLE_SEPARATOR = " \u00b7 ";
+  var EMERGENCY_TITLE = "Emergency: ";
+
+  function journey(origin, destination) {
+    var from = placeName(origin);
+    var to = placeName(destination);
+    if (from && to) { return from + " to " + to; }
+    if (to) { return "to " + to; }
+    return from ? "from " + from : "";
+  }
+
+  function showTitle(flight, origin, destination, emergency) {
+    var words = [flight, journey(origin, destination)].filter(Boolean).join(" ");
+    if (words && emergency) { words = EMERGENCY_TITLE + words; }
+    document.title = words ? words + TITLE_SEPARATOR + SITE_NAME : SITE_NAME;
+  }
+
   // A place with no airport code, such as an airfield FlightAware only knows by its
   // position, goes by its name alone.
   function airport(end) {
@@ -120,6 +141,7 @@
     setHomeCountry: setHomeCountry,
     placeName: placeName,
     showRoute: showRoute,
+    showTitle: showTitle,
     showLogo: showLogo,
     fitAll: fitAll,
     showStats: showStats
