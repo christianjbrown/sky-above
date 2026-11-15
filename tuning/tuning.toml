@@ -34,6 +34,16 @@ operator_kept_fresh_days = 365
 # Airlines that write their own flight numbers with the ICAO code: easyJet and its
 # European and Swiss arms all sell and board as EZY, never U2, EC or DS.
 icao_numbered_airlines = ["EZY", "EJU", "EZS"]
+# A free or kept route is only used when it fits the plane: within route_fit_path_km of the
+# straight line between its airports and going the right way along it. Within
+# route_fit_airport_km of either airport, the right way is not descending faster than
+# route_fit_level_fpm near the origin, nor climbing faster near the destination, which
+# catches the other leg of a round trip; further out it is a track within
+# route_fit_heading_deg of the destination. A route that does not fit is a paid lookup.
+route_fit_path_km = 50
+route_fit_airport_km = 80
+route_fit_heading_deg = 90
+route_fit_level_fpm = 500
 
 [state]
 # The files the watcher keeps in STATE_DIR. Renaming one starts it afresh.

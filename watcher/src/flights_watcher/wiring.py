@@ -56,14 +56,17 @@ from flights_watcher.followed_news import (
     TookOff,
 )
 from flights_watcher.following import FollowedFlights
+from flights_watcher.free_first import ByCallsign, FirstOperatorName, FreeFirstRoutes, PlaneRoutes
 from flights_watcher.heard import SpeechTiming
 from flights_watcher.history import Forgetting, HistoryPage, ShownHistory, SqliteShownStore
 from flights_watcher.http import JsonHttp, UrllibBytesHttp, UrllibJsonHttp, UrllibTextHttp
 from flights_watcher.known_routes import KnownRoutesPage
 from flights_watcher.live import LatestCard, LiveServer, Snapshot
 from flights_watcher.lookups import (
+    AdsbdbOperatorNames,
     AdsbdbRouteLookup,
     AirportTidier,
+    NoOperatorNames,
     NoPhotos,
     NoRoutes,
     PhotoLookup,
@@ -73,8 +76,11 @@ from flights_watcher.lookups import (
 )
 from flights_watcher.memory import (
     AllFresh,
+    FreshKeptRoutes,
     KeptRouteLookup,
+    KeptRoutes,
     Memory,
+    NeverFresh,
     RememberedOperatorNames,
     RememberedRouteLookup,
     SameTimetable,
@@ -123,6 +129,7 @@ from flights_watcher.presence import Linger, MinimumShowing
 from flights_watcher.priority import ServicesStay
 from flights_watcher.rare import RareKinds
 from flights_watcher.rotorcraft import KnownRotorcraft
+from flights_watcher.route_fit import OnTheWay
 from flights_watcher.schedule import QuietHours
 from flights_watcher.schedules import AeroApiSchedules
 from flights_watcher.sources import Tar1090AircraftSource
@@ -150,7 +157,7 @@ from flights_watcher.zone import Zone
 
 @dataclass(frozen=True)
 class Lookups:
-    routes: RouteLookup
+    routes: PlaneRoutes
     # Routes for planes that are not on the card, which must not cost a lookup.
     known_routes: RouteLookup
     photos: PhotoLookup
@@ -202,11 +209,26 @@ def build(settings: Settings, tuning: Tuning, clock: Clock, logger: logging.Logg
 
 
 def lookups(settings: Settings, tuning: Tuning, http: JsonHttp, clock: Clock, logger: logging.Logger) -> Lookups:
-    """Routes and airline names from AeroAPI when there is a key, else from adsbdb, and photos.
-    AeroAPI is paid by the lookup, so only planes on the card are asked about; anything
-    else goes by the routes already kept. adsbdb is free, so it answers for both."""
-    routes: RouteLookup = NoRoutes()
-    known_routes: RouteLookup | None = None
+    """Routes and airline names from adsbdb, which is free, and from AeroAPI when there is a
+    key, and photos. AeroAPI is paid by the lookup, so it is only asked about a plane on the
+    card whose kept and free routes do not fit it; anything else goes by the routes already
+    kept. Without a key, adsbdb's routes are used as they come, and answer for both."""
+    airport_tidiers: list[AirportTidier] = [AirportCities(tuning.airport_cities), AirportCountries.bundled(), AirportPlaces.bundled()]
+    free_routes: RouteLookup = NoRoutes()
+    free_names: OperatorNames = NoOperatorNames()
+    if settings.route_api_url:
+        free_routes = RetryLater(
+            CachedRouteLookup(
+                AdsbdbRouteLookup(settings.route_api_url, http, tuning.icao_numbered_airlines),
+                TtlCache(clock, tuning.lookup_ttl_seconds, tuning.lookup_cache_entries),
+            ),
+            clock,
+            tuning.route_retry_seconds,
+        )
+        free_names = AdsbdbOperatorNames(settings.route_api_url, http)
+    free = TidiedRoutes(free_routes, airport_tidiers)
+    routes: PlaneRoutes = ByCallsign(free)
+    known: RouteLookup = free
     operator_names: OperatorNames | None = None
     if settings.aeroapi_key:
         aeroapi = BudgetedHttp(
@@ -215,39 +237,38 @@ def lookups(settings: Settings, tuning: Tuning, http: JsonHttp, clock: Clock, lo
             PricedByPath(settings.aeroapi_url, settings.aeroapi_prices, settings.aeroapi_unlisted_price),
         )
         answers = str(pathlib.Path(settings.state_dir) / tuning.answers_file)
-        known_routes = KeptRouteLookup(SqliteAnswerStore(answers, "route", logger))
+        kept = SqliteAnswerStore(answers, "route", logger)
         operator_names = CachedOperatorNames(
             RememberedOperatorNames(
-                AeroApiOperatorNames(settings.aeroapi_url, aeroapi),
+                FirstOperatorName(free_names, AeroApiOperatorNames(settings.aeroapi_url, aeroapi), logger),
                 Memory(SqliteAnswerStore(answers, "operator", logger), YoungerThan(tuning.operator_kept_fresh), clock, logger),
             ),
             TtlCache(clock, tuning.operator_ttl_seconds, tuning.lookup_cache_entries),
         )
-        routes = CachedRouteLookup(
+        # Only asked once the kept route has been found wanting, so it never answers from what
+        # is kept unless FlightAware cannot be reached or knows nothing.
+        paid = CachedRouteLookup(
             RememberedRouteLookup(
                 AeroApiRouteLookup(settings.aeroapi_url, aeroapi, operator_names, tuning.icao_numbered_airlines),
-                Memory(
-                    SqliteAnswerStore(answers, "route", logger),
-                    route_freshness(tuning),
-                    clock,
-                    logger,
-                ),
+                Memory(kept, NeverFresh(), clock, logger),
             ),
             TtlCache(clock, tuning.lookup_ttl_seconds, tuning.lookup_cache_entries, tuning.no_route_ttl_seconds),
         )
-    elif settings.route_api_url:
-        routes = CachedRouteLookup(
-            AdsbdbRouteLookup(settings.route_api_url, http), TtlCache(clock, tuning.lookup_ttl_seconds, tuning.lookup_cache_entries)
+        routes = FreeFirstRoutes(
+            TidiedRoutes(FreshKeptRoutes(kept, route_freshness(tuning), clock), airport_tidiers),
+            free,
+            TidiedRoutes(RetryLater(paid, clock, tuning.route_retry_seconds), airport_tidiers),
+            KeptRoutes(kept, clock),
+            OnTheWay(tuning.route_fit_path_km, tuning.route_fit_airport_km, tuning.route_fit_heading_deg, tuning.route_fit_level_fpm),
+            logger,
         )
-    airport_tidiers: list[AirportTidier] = [AirportCities(tuning.airport_cities), AirportCountries.bundled(), AirportPlaces.bundled()]
+        known = TidiedRoutes(KeptRouteLookup(kept), airport_tidiers)
     photos: PhotoLookup = NoPhotos()
     if settings.photo_api_url:
         photos = CachedPhotoLookup(
             PlanespottersPhotoLookup(settings.photo_api_url, http), TtlCache(clock, tuning.lookup_ttl_seconds, tuning.lookup_cache_entries)
         )
-    tidied = TidiedRoutes(RetryLater(routes, clock, tuning.route_retry_seconds), airport_tidiers)
-    known = TidiedRoutes(known_routes, airport_tidiers) if known_routes else tidied
-    return Lookups(tidied, known, photos, operator_names, airport_tidiers)
+    return Lookups(routes, known, photos, operator_names, airport_tidiers)
 
 
 # Announcement clips are WAVs, which is what Piper makes and the receiver's /speech/ serves.
@@ -472,7 +493,7 @@ def watcher_for(
                 {code: Service("Air ambulance", "ambulance") for code in settings.air_ambulance_squawks}
                 | {code: Service("Police", "police") for code in settings.police_squawks}
             ),
-            MilitaryService(),
+            MilitaryService.bundled(),
         ]
     )
     closest = ClosestApproach(settings.home, tuning.approach_min_speed_kt)

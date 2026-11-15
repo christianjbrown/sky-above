@@ -58,7 +58,7 @@ PLANESPOTTERS_ANSWER = {
 
 
 def test_route_lookup_reads_adsbdb():
-    route = AdsbdbRouteLookup("https://adsbdb.test/v0/", FakeHttp({ROUTE_URL: ADSBDB_ANSWER})).route("BAW86S")
+    route = AdsbdbRouteLookup("https://adsbdb.test/v0/", FakeHttp({ROUTE_URL: ADSBDB_ANSWER}), ()).route("BAW86S")
     assert route == Route(
         airline="British Airways",
         flight_number="BA86S",
@@ -69,13 +69,13 @@ def test_route_lookup_reads_adsbdb():
 
 def test_unknown_callsign_is_none_but_an_outage_is_a_failure():
     unknown = FakeHttp({ROUTE_URL: http_error(404)})
-    assert AdsbdbRouteLookup("https://adsbdb.test/v0", unknown).route("BAW86S") is None
+    assert AdsbdbRouteLookup("https://adsbdb.test/v0", unknown, ()).route("BAW86S") is None
     down = FakeHttp({ROUTE_URL: http_error(503)})
     with pytest.raises(LookupFailed):
-        AdsbdbRouteLookup("https://adsbdb.test/v0", down).route("BAW86S")
+        AdsbdbRouteLookup("https://adsbdb.test/v0", down, ()).route("BAW86S")
     unreachable = FakeHttp({ROUTE_URL: OSError("no route")})
     with pytest.raises(LookupFailed):
-        AdsbdbRouteLookup("https://adsbdb.test/v0", unreachable).route("BAW86S")
+        AdsbdbRouteLookup("https://adsbdb.test/v0", unreachable, ()).route("BAW86S")
 
 
 def test_photo_lookup_reads_planespotters():
@@ -88,7 +88,7 @@ def test_photo_lookup_reads_planespotters():
 def test_cache_answers_repeats_and_expires():
     clock = FakeClock()
     http = FakeHttp({ROUTE_URL: ADSBDB_ANSWER})
-    routes = CachedRouteLookup(AdsbdbRouteLookup("https://adsbdb.test/v0", http), TtlCache(clock, 60, 10))
+    routes = CachedRouteLookup(AdsbdbRouteLookup("https://adsbdb.test/v0", http, ()), TtlCache(clock, 60, 10))
     routes.route("BAW86S")
     routes.route("BAW86S")
     assert len(http.requested) == 1
@@ -126,6 +126,9 @@ class StubRoutes:
         if self.error:
             raise self.error
         return self.answer
+
+    def route_of(self, plane):
+        return self.route(plane.callsign)
 
 
 class StubPhotos(StubRoutes):
@@ -334,11 +337,30 @@ def test_home_country_comes_from_the_nearest_airport():
 
 def test_military_planes_are_a_service_named_by_who_flies_them():
     raf = plane("raf", callsign="RRR4321", military=True, operator="Royal Air Force")
-    finder = FirstService([Services({"HLE": Service("Air ambulance", "ambulance")}), MilitaryService()])
+    finder = FirstService([Services({"HLE": Service("Air ambulance", "ambulance")}), MilitaryService({})])
     assert finder.of(raf) == Service("Royal Air Force", "military")
     assert finder.of(plane("unnamed", military=True, operator=None)) == Service("Military aircraft", "military")
     assert finder.of(plane("hems", callsign="HLE27")) == Service("Air ambulance", "ambulance")
     assert finder.of(plane()) is None
+
+
+def test_a_military_callsign_names_who_flies_the_plane():
+    military = MilitaryService({"RRR": "Royal Air Force"})
+    assert military.of(plane("unflagged", callsign="RRR2734", military=False)) == Service("Royal Air Force", "military")
+    assert military.of(plane("unnamed", callsign="RRR2734", military=True, operator=None)) == Service("Royal Air Force", "military")
+    assert military.of(plane("owner", callsign="RRR2734", military=True, operator="Ministry of Defence")) == Service(
+        "Royal Air Force", "military"
+    )
+    assert military.of(plane("airline", callsign="BAW86S", military=False)) is None
+    assert military.of(plane("tactical", callsign="TARTAN21", military=True, operator="Royal Air Force")) == Service(
+        "Royal Air Force", "military"
+    )
+
+
+def test_the_bundled_military_callsigns_include_the_raf_and_the_usaf():
+    military = MilitaryService.bundled()
+    assert military.of(plane("raf", callsign="RRR4321")) == Service("Royal Air Force", "military")
+    assert military.of(plane("usaf", callsign="RCH123")) == Service("US Air Force", "military")
 
 
 def test_a_service_can_be_known_by_its_squawk():
@@ -350,12 +372,14 @@ def test_a_service_can_be_known_by_its_squawk():
 
 def test_an_answer_with_no_route_in_it_is_no_route():
     for answer in ({"response": "unknown callsign"}, {"response": {"flightroute": None}}):
-        assert AdsbdbRouteLookup("https://adsbdb.test/v0", FakeHttp({ROUTE_URL: answer})).route("BAW86S") is None
+        assert AdsbdbRouteLookup("https://adsbdb.test/v0", FakeHttp({ROUTE_URL: answer}), ()).route("BAW86S") is None
 
 
 def test_a_route_missing_an_airport_keeps_the_airport_empty():
     flightroute = {key: value for key, value in ADSBDB_ANSWER["response"]["flightroute"].items() if key != "origin"}
-    route = AdsbdbRouteLookup("https://adsbdb.test/v0", FakeHttp({ROUTE_URL: {"response": {"flightroute": flightroute}}})).route("BAW86S")
+    route = AdsbdbRouteLookup("https://adsbdb.test/v0", FakeHttp({ROUTE_URL: {"response": {"flightroute": flightroute}}}), ()).route(
+        "BAW86S"
+    )
     assert route.origin is None
     assert TidiedRoutes(StubRoutes(route), [AirportCities({})]).route("BAW86S").origin is None
 

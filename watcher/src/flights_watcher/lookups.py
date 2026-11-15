@@ -1,6 +1,6 @@
 """Things worth knowing about a plane that its broadcast does not say."""
 
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Protocol
 from urllib.error import HTTPError
@@ -52,32 +52,64 @@ class PhotoLookup(Protocol):
 
 
 class AdsbdbRouteLookup:
-    def __init__(self, base_url: str, http: JsonHttp) -> None:
+    """icao_numbered lists airlines whose flights people know by their ICAO number,
+    such as easyJet's EZY839, rather than the IATA one (U2839)."""
+
+    def __init__(self, base_url: str, http: JsonHttp, icao_numbered: Collection[str]) -> None:
         self._base_url = base_url.rstrip("/")
         self._http = http
+        self._icao_numbered = icao_numbered
 
     def route(self, callsign: str) -> Route | None:
-        try:
-            data = self._http.get_json(f"{self._base_url}/callsign/{quote(callsign)}")
-        except HTTPError as error:
-            # It holds the response, and with it the connection.
-            error.close()
-            if error.code == 404:
-                return None
-            raise LookupFailed(str(error)) from error
-        except (OSError, ValueError) as error:
-            raise LookupFailed(str(error)) from error
-        response = data.get("response") if isinstance(data, dict) else None
+        response = _adsbdb_response(self._http, f"{self._base_url}/callsign/{quote(callsign)}")
         found = response.get("flightroute") if isinstance(response, dict) else None
         if not isinstance(found, dict):
             return None
         airline = found.get("airline") or {}
+        number = found.get("callsign_iata")
+        if airline.get("icao") in self._icao_numbered or not number:
+            number = found.get("callsign_icao") or found.get("callsign")
         return Route(
             airline=airline.get("name"),
-            flight_number=found.get("callsign_iata") or found.get("callsign"),
+            flight_number=number,
             origin=_airport(found.get("origin")),
             destination=_airport(found.get("destination")),
         )
+
+
+class AdsbdbOperatorNames:
+    """Airline names by ICAO code from adsbdb, which is free: RRR is the Royal Air Force."""
+
+    def __init__(self, base_url: str, http: JsonHttp) -> None:
+        self._base_url = base_url.rstrip("/")
+        self._http = http
+
+    def name(self, icao: str) -> str | None:
+        response = _adsbdb_response(self._http, f"{self._base_url}/airline/{quote(icao)}")
+        first = response[0] if isinstance(response, list) and response else None
+        return first.get("name") if isinstance(first, dict) else None
+
+
+class NoOperatorNames:
+    """Used when ROUTE_API_URL is empty, so no airline code is sent out of the house."""
+
+    def name(self, icao: str) -> str | None:
+        return None
+
+
+def _adsbdb_response(http: JsonHttp, url: str) -> Any:
+    """The response part of an adsbdb answer, None when it knows nothing about it."""
+    try:
+        data = http.get_json(url)
+    except HTTPError as error:
+        # It holds the response, and with it the connection.
+        error.close()
+        if error.code == 404:
+            return None
+        raise LookupFailed(str(error)) from error
+    except (OSError, ValueError) as error:
+        raise LookupFailed(str(error)) from error
+    return data.get("response") if isinstance(data, dict) else None
 
 
 class PlanespottersPhotoLookup:

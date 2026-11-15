@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   version="1.1"
+   id="Roundel of the Italian Air Force"
+   width="600"
+   height="600"
+   sodipodi:version="0.32"
+   inkscape:version="0.47 r22583"
+   sodipodi:docname="Irish_Air_Corps_roundel.svg">
+  <metadata
+     id="metadata1983">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs1981">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 300 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="600 : 300 : 1"
+       inkscape:persp3d-origin="300 : 200 : 1"
+       id="perspective10" />
+    <inkscape:perspective
+       id="perspective2824"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+  </defs>
+  <sodipodi:namedview
+     inkscape:window-height="1004"
+     inkscape:window-width="1280"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     guidetolerance="10.0"
+     gridtolerance="10.0"
+     objecttolerance="10.0"
+     borderopacity="1.0"
+     bordercolor="#666666"
+     pagecolor="#ffffff"
+     id="base"
+     showguides="true"
+     inkscape:guide-bbox="true"
+     inkscape:zoom="0.62833335"
+     inkscape:cx="-149.60209"
+     inkscape:cy="451.31635"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:current-layer="Roundel of the Italian Air Force"
+     showgrid="false"
+     inkscape:window-maximized="1" />
+  <path
+     sodipodi:type="arc"
+     style="fill:black;fill-opacity:1;fill-rule:evenodd;stroke-linejoin:round"
+     id="path1892"
+     sodipodi:cx="197.52591"
+     sodipodi:cy="369.86218"
+     sodipodi:rx="94.46891"
+     sodipodi:ry="97.5"
+     d="M 291.99482 369.86218 A 94.46891 97.5 0 1 1  103.057,369.86218 A 94.46891 97.5 0 1 1  291.99482 369.86218 z"
+     transform="matrix(3.175648,0,0,3.076923,-327.2728,-838.0374)" />
+  <path
+     sodipodi:type="arc"
+     style="fill:white;fill-opacity:1;fill-rule:evenodd;stroke-linejoin:round"
+     id="path4597"
+     sodipodi:cx="124.77979"
+     sodipodi:cy="488.5798"
+     sodipodi:rx="34.857513"
+     sodipodi:ry="74.766838"
+     d="M 159.63731 488.5798 A 34.857513 74.766838 0 1 1  89.922279,488.5798 A 34.857513 74.766838 0 1 1  159.63731 488.5798 z"
+     transform="matrix(8.520401,0,0,3.972349,-763.1739,-1640.809)" />
+  <path
+     style="fill:#ff6600;fill-opacity:1;fill-rule:evenodd;stroke-linejoin:round"
+     d="M 41.125103,154.41902 C 16.861962,197.44736 3.0001022,247.12588 3.0001022,300.01277 C 3.0001022,463.95676 136.05612,597.01281 300.00011,597.01281 C 304.39879,597.01281 308.77287,596.88991 313.12511,596.70031 C 356.25124,563.80607 384.09385,511.86775 384.09386,453.48152 C 384.09386,354.12151 303.45388,273.48149 204.09386,273.48152 C 189.83189,273.48155 175.96383,275.15425 162.65636,278.29402 L 162.65636,154.41902 L 41.125103,154.41902 z "
+     id="path2788" />
+  <path
+     style="fill:#005d22;fill-opacity:1;fill-rule:evenodd;stroke-linejoin:round"
+     d="M 300.00011,3.012766 C 188.19042,3.012766 90.761023,64.897026 40.093853,156.26277 C 48.724133,247.603 125.69503,319.13775 219.28136,319.13777 C 247.90567,319.13777 274.96405,312.41687 299.00011,300.51277 C 302.9445,204.63384 381.97027,128.04402 478.81261,128.04402 C 505.09981,128.04402 530.07461,133.71363 552.59391,143.85652 C 500.21711,59.347696 406.66548,3.012766 300.00011,3.012766 z "
+     id="path4585" />
+</svg>

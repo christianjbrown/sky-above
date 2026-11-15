@@ -6,7 +6,8 @@ from dataclasses import asdict
 from typing import Any, Protocol
 
 from flights_watcher.aircraft import Aircraft
-from flights_watcher.lookups import Airport, LookupFailed, PhotoLookup, RouteLookup
+from flights_watcher.free_first import PlaneRoutes
+from flights_watcher.lookups import Airport, LookupFailed, PhotoLookup
 from flights_watcher.naming import Service, airline_code
 from flights_watcher.rare import ROTORCRAFT
 from flights_watcher.zone import Sighting
@@ -23,7 +24,7 @@ class ServiceFinder(Protocol):
 class CardBuilder:
     def __init__(
         self,
-        routes: RouteLookup,
+        routes: PlaneRoutes,
         photos: PhotoLookup,
         aircraft_names: AircraftNamer,
         services: ServiceFinder,
@@ -40,8 +41,8 @@ class CardBuilder:
         service = self._services.of(plane)
         # Emergency and military flights keep no timetable, so there is no route to ask about, and
         # FlightAware's guess at one names some other operator and a spot on a map.
-        route = None if service else self._ask(self._routes.route, plane.callsign)
-        photo = self._ask(self._photos.photo, plane.registration)
+        route = None if service else self._ask(self._routes.route_of, plane, plane.callsign)
+        photo = self._ask(self._photos.photo, plane.registration, plane.registration)
         code = airline_code(plane.callsign)
         return {
             "hex": plane.hex,
@@ -69,13 +70,13 @@ class CardBuilder:
             "photo": asdict(photo) if photo else None,
         }
 
-    def _ask[V](self, lookup: Callable[[str], V], key: str | None) -> V | None:
-        if key is None:
+    def _ask[K, V](self, lookup: Callable[[K], V], key: K | None, label: str | None) -> V | None:
+        if key is None or label is None:
             return None
         try:
             return lookup(key)
         except LookupFailed as error:
-            self._logger.warning("lookup for %s failed: %s", key, error)
+            self._logger.warning("lookup for %s failed: %s", label, error)
             return None
 
 

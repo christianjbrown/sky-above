@@ -103,6 +103,13 @@ class SameTimetable:
         )
 
 
+class NeverFresh:
+    """For a lookup that is only asked once the kept answer has already been found wanting."""
+
+    def is_fresh(self, saved_at: datetime, now: datetime) -> bool:
+        return False
+
+
 class AllFresh:
     def __init__(self, rules: Sequence[Freshness]) -> None:
         self._rules = rules
@@ -170,6 +177,34 @@ class KeptRouteLookup:
     def route(self, callsign: str) -> Route | None:
         kept = self._store.get(callsign)
         return _route(kept.value) if kept else None
+
+
+class FreshKeptRoutes:
+    """The route kept for a callsign while it is fresh, without ever asking for one."""
+
+    def __init__(self, store: AnswerStore, freshness: Freshness, clock: Clock) -> None:
+        self._store = store
+        self._freshness = freshness
+        self._clock = clock
+
+    def route(self, callsign: str) -> Route | None:
+        kept = self._store.get(callsign)
+        if kept is None or not self._freshness.is_fresh(kept.saved_at, self._clock.now()):
+            return None
+        return _route(kept.value)
+
+
+class KeptRoutes:
+    """Keeps a route found some other way than by asking through Memory, such as a free
+    one that fitted the plane, so it is known next time and on the /flights page."""
+
+    def __init__(self, store: AnswerStore, clock: Clock) -> None:
+        self._store = store
+        self._clock = clock
+
+    def keep(self, callsign: str, route: Route) -> None:
+        if _both_ends(route):
+            self._store.put(callsign, asdict(route), self._clock.now())
 
 
 class RememberedOperatorNames:

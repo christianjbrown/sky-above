@@ -1,8 +1,8 @@
 """Routes from FlightAware's AeroAPI, which follows each flight as it is flown today.
 
-adsbdb's fixed list gave old routes, the wrong leg of a round trip and a
-callsign in place of the flight number. AeroAPI knows which flight a callsign
-is right now, so the card gets the real flight number and direction."""
+adsbdb's fixed list gives old routes and the wrong leg of a round trip. AeroAPI
+knows which flight a callsign is right now, so it answers for a plane whose free
+route does not fit it (see route_fit and free_first)."""
 
 import re
 from collections.abc import Collection
