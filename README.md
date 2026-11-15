@@ -326,10 +326,9 @@ name in `OTHER_SITES`. That needs port 80 on the Pi (`HTTP_PORT`), so nothing el
   hears nothing for an hour, then again once it's fine. Put an [ntfy](https://ntfy.sh) topic like
   `https://ntfy.sh/<a-long-random-name>` after `ALERT_URL=` in `.env` and subscribe to it in the
   ntfy app to get those on your phone. Without one they just land in `docker compose logs watchdog`.
-- 🔄 **It can update itself.** Run `tools/install-auto-deploy.sh` once on the Pi and it checks
-  GitHub every five minutes. New versions get built in the background, but only swapped in when
-  the card is clear, so nobody gets cut off mid-sentence. Quiet hours make sure there's a gap every
-  night.
+- 🔄 **Updating is one command.** Run `tools/deploy.sh` on the Pi and it pulls the latest version,
+  rebuilds whatever changed and swaps it in there and then. Nothing checks for updates on a
+  schedule, so it only changes when you say so.
 - 🛬 **Planes come first.** When there's one to show, it takes the screen from whatever is on it,
   music and films included, and hands it back once the sky is clear. Anything else casting to the
   same screen just has to wait its turn.
@@ -347,9 +346,7 @@ Run these on the Pi, from `~/sky-above`:
 |---|---|
 | See what's running | `docker compose ps` |
 | Watch what it's doing | `docker compose logs -f watcher` |
-| Update Sky Above | `git pull && docker compose up -d --build` |
-| Have it update itself | `tools/install-auto-deploy.sh` (once) |
-| See what it updated | `journalctl -t sky-above-deploy` |
+| Update Sky Above | `tools/deploy.sh` |
 | See what flew over | open `http://skyabove.local:8090/history` |
 | See the flights it knows | open `http://skyabove.local:8090/flights` |
 | Update everything else | `docker compose pull && docker compose up -d` |
