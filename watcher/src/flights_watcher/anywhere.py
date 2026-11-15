@@ -1,22 +1,18 @@
-"""Aircraft worth a card wherever the antenna hears them: air ambulances, the police, the
-military and famous owners' planes. They go after the planes overhead, nearest first."""
+"""Aircraft worth a card wherever the antenna hears them: famous owners' planes. They go
+after the planes overhead, nearest first. Air ambulances, the police and the military are
+shown like any other plane, in the zone or on their way into it."""
 
-from collections.abc import Collection, Iterable, Sequence
+from collections.abc import Iterable
 from typing import Protocol
 
 from flights_watcher.aircraft import Aircraft
 from flights_watcher.geo import Location
-from flights_watcher.naming import Service
 from flights_watcher.notable import Notable
 from flights_watcher.zone import Sighting
 
 
 class SpecialRule(Protocol):
     def includes_aircraft(self, plane: Aircraft) -> bool: ...
-
-
-class ServiceFinder(Protocol):
-    def of(self, plane: Aircraft) -> Service | None: ...
 
 
 class NotableFinder(Protocol):
@@ -27,30 +23,12 @@ class SightingFinder(Protocol):
     def sightings(self, aircraft: Iterable[Aircraft]) -> list[Sighting]: ...
 
 
-class ServiceKinds:
-    def __init__(self, services: ServiceFinder, kinds: Collection[str]) -> None:
-        self._services = services
-        self._kinds = kinds
-
-    def includes_aircraft(self, plane: Aircraft) -> bool:
-        service = self._services.of(plane)
-        return service is not None and service.kind in self._kinds
-
-
 class FamousOwner:
     def __init__(self, notables: NotableFinder) -> None:
         self._notables = notables
 
     def includes_aircraft(self, plane: Aircraft) -> bool:
         return self._notables.of(plane) is not None
-
-
-class AnySpecial:
-    def __init__(self, rules: Sequence[SpecialRule]) -> None:
-        self._rules = rules
-
-    def includes_aircraft(self, plane: Aircraft) -> bool:
-        return any(rule.includes_aircraft(plane) for rule in self._rules)
 
 
 class HeardAnywhere:

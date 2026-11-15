@@ -1,6 +1,6 @@
 """Which planes on the card are worth saying out loud. Every plane overhead is shown, but
 only the ones worth listening out for are announced: an air ambulance, the police, the
-military or a famous owner's plane, wherever it is, and a flight going somewhere known
+military or a famous owner's plane, however high it is, and a flight going somewhere known
 that will be low enough over home to be heard."""
 
 from collections.abc import Collection, Sequence
