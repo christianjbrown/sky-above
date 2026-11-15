@@ -76,6 +76,7 @@
     parts.setText("airline", flight.airline || flight.airlineCode || "");
     parts.setText("flight", flight.ident);
     parts.showRoute(flight.origin, flight.destination);
+    parts.showTitle(flight.ident, flight.origin, flight.destination);
     parts.byId("aircraft").innerHTML = status(flight);
     parts.setText("note", note(message, home));
     parts.showStats(stats(flight, home, now));

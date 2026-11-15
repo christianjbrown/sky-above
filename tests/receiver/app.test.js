@@ -183,6 +183,19 @@ describe("on the Hub", () => {
     expect(text("flight")).toBe("BA86S");
   });
 
+  it("names the flight on the card, and where it is going, in the tab's title", () => {
+    deliver(planesMessage());
+    expect(document.title).toBe("BA86S Prague to London · Sky Above");
+    deliver(planesMessage({ origin: null }));
+    expect(document.title).toBe("BA86S to London · Sky Above");
+    deliver(planesMessage({ destination: null }));
+    expect(document.title).toBe("BA86S from Prague · Sky Above");
+    deliver(planesMessage({ flightNumber: null, callsign: null, origin: null, destination: null, emergency: { kind: "general", squawk: "7700", label: "General emergency" } }));
+    expect(document.title).toBe("Emergency: 4CA7B5 · Sky Above");
+    deliver({ type: "followed", homeTimezone: "Europe/London", flight: { ident: "BA4321", phase: "waiting", destination: { code: "BER", city: "Berlin" } } });
+    expect(document.title).toBe("BA4321 to Berlin · Sky Above");
+  });
+
   it("ignores messages that are not about a plane", () => {
     deliver(null);
     deliver({ type: "other" });
@@ -296,9 +309,11 @@ describe("in an ordinary browser", () => {
     await vi.advanceTimersByTimeAsync(1000);
     expect(screenClasses()).toEqual(["waiting"]);
     expect(text("waiting-line")).toBe("Watching the sky…");
+    expect(document.title).toBe("Sky Above");
     await vi.advanceTimersByTimeAsync(1000);
     expect(screenClasses()).toEqual([]);
     expect(text("flight")).toBe("BA86S");
+    expect(document.title).toBe("BA86S Prague to London · Sky Above");
   });
 
   it("stops redrawing a followed flight once the sky is clear", async () => {

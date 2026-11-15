@@ -70,6 +70,7 @@
     screen.classList.add("waiting");
     followedCard.hide();
     flightMap.forget();
+    parts.showTitle("");
   }
 
   function render(message) {
@@ -98,8 +99,10 @@
 
     parts.showLogo(plane.airlineCode, plane.helicopter, plane.ownerPortrait);
     parts.setText("airline", plane.airline || plane.owner || plane.callsign || "");
-    parts.setText("flight", plane.flightNumber || plane.callsign || plane.registration || plane.hex.toUpperCase());
+    var flight = plane.flightNumber || plane.callsign || plane.registration || plane.hex.toUpperCase();
+    parts.setText("flight", flight);
     parts.showRoute(plane.origin, plane.destination);
+    parts.showTitle(flight, plane.origin, plane.destination, !!plane.emergency);
     parts.setText("aircraft", plane.aircraft || plane.typeCode || "");
     parts.setText("note", plane.emergency ? emergencyLine(plane.emergency) : "");
 
