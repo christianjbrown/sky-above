@@ -174,6 +174,7 @@ services:
   # points at the Pi's home address. It also passes the watcher's live card
   # through to browsers, reaching the watcher on the host, and serves any
   # OTHER_SITES over https on their behalf, as only one thing can have port 443.
+  # Plain http for the Pi's own address shows the card, or the app on HOME_PORT.
   receiver:
     image: nginx:alpine
     container_name: receiver
@@ -188,6 +189,7 @@ services:
       - LIVE_PORT=${LIVE_PORT:-8091}
       - CERT_DOMAIN=${CERT_DOMAIN:-}
       - OTHER_SITES=${OTHER_SITES:-}
+      - HOME_PORT=${HOME_PORT:-}
       # Templates render into /etc/nginx, so the shared locations and the https
       # server land beside conf.d rather than in it.
       - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
@@ -204,6 +206,8 @@ services:
       # Kept out of templates, whose ${} filling would empty nginx's own $host.
       - ./nginx/other-site.conf:/etc/nginx/other-site.conf.in:ro
       - ./nginx/to-https.conf:/etc/nginx/to-https.conf.in:ro
+      - ./nginx/http-card.conf:/etc/nginx/http-card.conf.in:ro
+      - ./nginx/http-home.conf:/etc/nginx/http-home.conf.in:ro
 
   # Gets and renews a Let's Encrypt certificate for CERT_DOMAIN and for each of
   # OTHER_SITES, proving it owns each name with a short-lived DNS record made

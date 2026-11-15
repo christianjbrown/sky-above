@@ -565,6 +565,11 @@ Sky Above serves it for them: point that app's own name at the Pi as well, add i
 `name=port` (for example `tube.example.com=8095`), and run `docker compose up -d`. Each name gets
 its own certificate, and the receiver passes it through to that port once the certificate is there.
 
+Sky Above has port 80 too, so plain `http://skyabove.local/` shows the card. Would you rather it
+showed something else, like a little page of links to everything on the Pi? 🏠 Run that page on a
+port of its own, set `HOME_PORT` to it, and run `docker compose up -d`. The https names still go
+on to https, and the card is still at `http://skyabove.local:8090/`.
+
 Over https, a link to the page shares with a preview card 🖼️ (`receiver/og.jpg`, drawn from
 `docs/og-card.html`). Previews need the image's full address, which nginx fills in from
 `CERT_DOMAIN`.
