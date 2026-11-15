@@ -12,6 +12,7 @@ from flights_watcher import wiring
 from flights_watcher.chime import MutedLaunchDevice
 from flights_watcher.clock import SystemClock
 from flights_watcher.config import Settings
+from flights_watcher.free_first import ByCallsign
 from flights_watcher.http import UrllibBytesHttp, UrllibJsonHttp, UrllibTextHttp
 from flights_watcher.live import LatestCard, LiveServer
 from flights_watcher.lookups import NoPhotos
@@ -63,7 +64,7 @@ def test_with_everything_switched_off_the_watcher_still_runs_on_its_own(tmp_path
 def test_followed_flights_need_aeroapi_as_well_as_a_list(tmp_path):
     adsbdb_only = settings(tmp_path)
     found = wiring.lookups(adsbdb_only, TUNING, UrllibJsonHttp("test", 1), FakeClock(), LOGGER)
-    assert found.known_routes is found.routes
+    assert isinstance(found.routes, ByCallsign)
     voice = wiring.voices(adsbdb_only, TUNING, FakeClock(), RareKinds(()), LOGGER)
     assert isinstance(wiring.followed_standby(adsbdb_only, TUNING, found, voice, FakeClock(), LOGGER), NothingOnStandby)
 

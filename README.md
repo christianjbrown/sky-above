@@ -40,7 +40,7 @@ flowchart TD
     antenna --> stick["🔌 USB radio stick"]
     stick --> pi["🍓 Raspberry Pi"]
     pi -- "home Wi-Fi" --> screen["📺 Any Cast device<br/>(smart TV or projector, Nest Hub, Chromecast, etc.)"]
-    aeroapi["🌐 Route lookup<br/>FlightAware AeroAPI, or a free one"] -. "where each flight is going" .-> pi
+    aeroapi["🌐 Route lookup<br/>A free one, then FlightAware AeroAPI"] -. "where each flight is going" .-> pi
     antenna ~~~ aeroapi
     style plane fill:none,stroke:none
 ```
@@ -172,7 +172,13 @@ Now wait for a plane. ✨
 
 ### Step 4: Better routes (optional)
 
-Without a key, routes come from a free service that's often out of date.
+Without a key, routes come from a free service that's often out of date: it knows the
+route a callsign usually flies, not the one it's flying today.
+
+With a key, Sky Above still asks the free one first, and checks its answer against the
+plane itself: is it near the line between the two airports, and going the right way? 🧭 Only
+a route that doesn't fit, or one the free service has never heard of, gets a paid FlightAware
+lookup. Most flights overhead fly the same route every day, so most of them cost nothing.
 
 1. Get a personal key at https://www.flightaware.com/aeroapi/portal/
 2. Put it after `AEROAPI_KEY=` in `.env`, save, and run `docker compose up -d`.

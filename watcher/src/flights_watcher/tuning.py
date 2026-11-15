@@ -137,6 +137,10 @@ class Tuning:
     route_kept_fresh: timedelta
     operator_kept_fresh: timedelta
     icao_numbered_airlines: tuple[str, ...]
+    route_fit_path_km: float
+    route_fit_airport_km: float
+    route_fit_heading_deg: float
+    route_fit_level_fpm: float
     answers_file: str
     aeroapi_budget_file: str
     followed_budget_file: str
@@ -241,6 +245,10 @@ class Tuning:
             route_kept_fresh=timedelta(days=lookups.number("route_kept_fresh_days")),
             operator_kept_fresh=timedelta(days=lookups.number("operator_kept_fresh_days")),
             icao_numbered_airlines=lookups.texts("icao_numbered_airlines"),
+            route_fit_path_km=lookups.number("route_fit_path_km"),
+            route_fit_airport_km=lookups.number("route_fit_airport_km"),
+            route_fit_heading_deg=lookups.number("route_fit_heading_deg"),
+            route_fit_level_fpm=lookups.number("route_fit_level_fpm"),
             answers_file=state.text("answers_file"),
             aeroapi_budget_file=state.text("aeroapi_budget_file"),
             followed_budget_file=state.text("followed_budget_file"),
