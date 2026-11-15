@@ -58,6 +58,9 @@ ALIASES = {
     "CAO": "CCA",  # Air China Cargo
     "ROU": "ACA",  # Air Canada Rouge
     "MAC": "ABY",  # Air Arabia Maroc
+    "CNV": "RCH",  # US Navy, under the same national insignia as the US Air Force
+    "PAT": "RCH",  # US Army, likewise
+    "FAF": "CTM",  # French Air Force, its other callsign code
 }
 # Airlines Soaring Symbols has no logo for, from Wikimedia, public domain or CC0. Each
 # file's licence was checked by hand; a non-free one never goes in.
@@ -124,6 +127,30 @@ EXTRAS = {
     "VJT": "https://upload.wikimedia.org/wikipedia/commons/3/3a/VistaJet_logo.svg",  # VistaJet
     "WIF": "https://upload.wikimedia.org/wikipedia/commons/c/c1/Wideroe_logo_2002.svg",  # Widerøe
 }
+# Air forces, by the callsign code their flights use, shown by their roundel. All from
+# Wikimedia, public domain, checked by hand like EXTRAS. Where a force's current roundel
+# is not free, a free near-identical one stands in (Sweden's lacks the yellow ring), and
+# a force with neither (the Royal New Zealand Air Force) has no logo.
+ROUNDELS = {
+    "AME": "https://upload.wikimedia.org/wikipedia/commons/1/17/Roundel_of_Spain.svg",  # Spanish Air Force
+    "ASY": "https://upload.wikimedia.org/wikipedia/commons/6/67/Roundel_of_Australia.svg",  # Royal Australian Air Force
+    "BAF": "https://upload.wikimedia.org/wikipedia/commons/0/07/Roundel_of_Belgium.svg",  # Belgian Air Force
+    "CFC": "https://upload.wikimedia.org/wikipedia/commons/2/27/Roundel_of_Canada.svg",  # Canadian Armed Forces
+    "CTM": "https://upload.wikimedia.org/wikipedia/commons/a/ad/Roundel_of_France.svg",  # French Air Force
+    "DAF": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Roundel_of_Denmark.svg",  # Royal Danish Air Force
+    "GAF": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Balkenkreuz.svg",  # German Air Force
+    "HAF": "https://upload.wikimedia.org/wikipedia/commons/6/67/Roundel_of_Greece_%E2%80%93_Type_2.svg",  # Hellenic Air Force
+    "IAM": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Roundel_of_Italy.svg",  # Italian Air Force
+    "IRL": "https://upload.wikimedia.org/wikipedia/commons/f/f0/Roundel_of_Ireland.svg",  # Irish Air Corps
+    "NAF": "https://upload.wikimedia.org/wikipedia/commons/b/b8/Roundel_of_the_Netherlands.svg",  # Royal Netherlands Air Force
+    "NOW": "https://upload.wikimedia.org/wikipedia/commons/2/28/Roundel_of_Norway.svg",  # Royal Norwegian Air Force
+    "PLF": "https://upload.wikimedia.org/wikipedia/commons/7/77/Roundel_of_Poland.svg",  # Polish Air Force
+    "RCH": "https://upload.wikimedia.org/wikipedia/commons/1/10/Roundel_of_the_USAF.svg",  # US Air Force
+    "RRR": "https://upload.wikimedia.org/wikipedia/commons/7/71/Roundel_of_the_United_Kingdom.svg",  # Royal Air Force
+    "SVF": "https://upload.wikimedia.org/wikipedia/commons/8/82/Roundel_of_Sweden_%281937%E2%80%931940%29.svg",  # Swedish Air Force
+}
+# Wikimedia turns away downloads from a user agent with no way to reach whoever runs it.
+USER_AGENT = "sky-above-logo-fetch/1.0 (https://github.com/christianjbrown/sky-above)"
 OUT = pathlib.Path(__file__).resolve().parents[1] / "receiver" / "logos"
 
 
@@ -133,7 +160,7 @@ def fetch(path: str) -> bytes:
 
 def download(url: str) -> bytes:
     """Waits and tries again when told to slow down, as Wikimedia does after a few files."""
-    request = urllib.request.Request(url, headers={"User-Agent": "flights logo fetch"})
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     for wait in (10, 60, 120):
         try:
             with urllib.request.urlopen(request, timeout=20) as response:
@@ -171,7 +198,7 @@ def main() -> None:
             continue
         (OUT / f"{code}.svg").write_bytes(svg)
         written[code] = svg
-    for code, url in EXTRAS.items():
+    for code, url in (EXTRAS | ROUNDELS).items():
         # Wikimedia only allows a few downloads in a row, so one already here is kept.
         # To pick up a new version of one, delete its file first.
         kept = OUT / f"{code}.svg"
