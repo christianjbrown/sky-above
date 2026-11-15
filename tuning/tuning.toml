@@ -230,12 +230,13 @@ minutes = 25
 [emergency]
 # A plane in an emergency counts once its squawk or emergency status has held for this
 # many looks, or its climb or descent, steeper than any departure or arrival, for this
-# many; it is over once this long has passed without a look that showed it. A plane can
+# many; it is over, and its card goes, once this long has passed without a look that
+# showed it. A plane can
 # start its descent at well over the steep rate for a few seconds, while a real emergency
 # descent keeps it up for minutes, so the steep rate has to hold for most of a minute.
 held_polls = 3
 steep_held_polls = 45
-clear_seconds = 60
+clear_seconds = 300
 steep_descent_fpm = 6000
 steep_climb_fpm = 8000
 # A steep rate only counts while the altitude has moved at least this share of what the
