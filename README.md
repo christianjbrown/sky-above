@@ -310,7 +310,8 @@ It still works with the key taken out, showing whatever was remembered while the
 
 Over https (`CERT_DOMAIN` set) both are at `https://<your-domain>/history` and `/flights` too, the same as the card.
 Typing plain `http://<your-domain>/` sends you on to https by itself, and the same goes for every
-name in `OTHER_SITES`. That needs port 80 on the Pi (`HTTP_PORT`), so nothing else there can have it. 🔒
+name in `OTHER_SITES`. That needs port 80 on the Pi, so if something else
+there wants it, give Sky Above another one with `HTTP_PORT`. 🔒
 
 ## Good to know
 
@@ -567,11 +568,6 @@ Got another app on the same Pi that wants https too? Only one thing can have por
 Sky Above serves it for them: point that app's own name at the Pi as well, add it to `OTHER_SITES` as
 `name=port` (for example `tube.example.com=8095`), and run `docker compose up -d`. Each name gets
 its own certificate, and the receiver passes it through to that port once the certificate is there.
-
-Sky Above has port 80 too, so plain `http://skyabove.local/` shows the card. Would you rather it
-showed something else, like a little page of links to everything on the Pi? 🏠 Run that page on a
-port of its own, set `HOME_PORT` to it, and run `docker compose up -d`. The https names still go
-on to https, and the card is still at `http://skyabove.local:8090/`.
 
 Over https, a link to the page shares with a preview card 🖼️ (`receiver/og.jpg`, drawn from
 `docs/og-card.html`). Previews need the image's full address, which nginx fills in from
