@@ -326,7 +326,7 @@ there wants it, give Sky Above another one with `HTTP_PORT`. 🔒
 - 🔇 **Only what you'll hear gets a voice.** A flight overhead is announced when its destination is
   known and it passes lower than 5 km, so you can hear it (`heard_below_km` in the tunings).
   Anything higher, or with no destination, is shown without a word.
-  On a Nest Hub the emergency announcement turns the volume up to 8 out of 10 (never down) and puts
+  On a Nest Hub the emergency announcement turns the volume all the way up (never down) and puts
   it back afterwards.
 - 🔔 **It tells you when it's stuck.** A little watchdog checks on the watcher every minute and
   shouts if it stops looking at the sky, keeps failing (say the screen has gone), or the antenna
