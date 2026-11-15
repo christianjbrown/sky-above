@@ -93,6 +93,10 @@ host = "0.0.0.0"
 # flights, the bulk of them, are forgotten after this long. Famous owners' planes, private
 # ones, the military, police and air ambulances are rare enough to keep for good.
 airlines_kept_days = 90
+# A plane that takes the card back within this long of giving it up, because another plane
+# had the top spot for a moment or the card cleared and came back, is the same visit, so it
+# stays one row rather than one for each time it returned.
+same_visit_minutes = 30
 
 [speech]
 timeout_seconds = 15

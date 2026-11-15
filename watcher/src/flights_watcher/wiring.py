@@ -367,7 +367,7 @@ def display_for(
     shown = Forgetting(
         SqliteShownStore(str(pathlib.Path(settings.state_dir) / tuning.history_file), logger), tuning.history_airlines_kept, clock
     )
-    display = FanOutDisplay([display, ShownHistory(shown, clock)])
+    display = FanOutDisplay([display, ShownHistory(shown, clock, tuning.history_same_visit)])
     live_server: LiveServer | None = None
     if settings.live_port is not None:
         latest = LatestCard()

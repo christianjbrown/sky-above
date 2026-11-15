@@ -40,7 +40,7 @@ class Kept:
 
 def history():
     kept, clock = Kept(), FakeClock(datetime(2026, 7, 1, 13, 0, tzinfo=BST))
-    return ShownHistory(kept, clock), kept, clock
+    return ShownHistory(kept, clock, timedelta(minutes=30)), kept, clock
 
 
 def test_a_plane_is_kept_as_soon_as_it_takes_the_card_with_everything_the_card_says():
@@ -133,15 +133,38 @@ def test_a_plane_with_no_height_at_all_keeps_none():
     assert kept.kept[-1].lowest_ft is None
 
 
-def test_clearing_writes_the_last_plane_only_when_it_changed_and_a_return_is_a_new_showing():
-    recorder, kept, clock = history()
+def test_clearing_writes_the_last_plane_only_when_it_changed():
+    recorder, kept, _ = history()
     recorder.show(planes(card()))
     recorder.clear()
     recorder.clear()
     assert len(kept.kept) == 1
+
+
+def test_a_plane_back_on_the_card_soon_after_carries_on_its_visit():
+    recorder, kept, clock = history()
+    recorder.show(planes(card(km=5.0)))
+    clock.at += timedelta(minutes=2)
+    recorder.show(planes(card("other")))
+    recorder.show(planes(card(km=5.0)))
+    recorder.clear()
     clock.at += timedelta(minutes=30)
+    recorder.show(planes(card(km=2.0)))
+    recorder.clear()
+    mine = [s for s in kept.kept if s.hex == "abc123"]
+    assert {s.shown_at for s in mine} == {"2026-07-01T12:00:00+00:00"}
+    assert [s.closest_km for s in mine] == [5.0, 2.0]
+
+
+def test_a_plane_back_after_longer_than_a_visit_is_a_new_one():
+    recorder, kept, clock = history()
     recorder.show(planes(card()))
-    assert [s.shown_at for s in kept.kept] == ["2026-07-01T12:00:00+00:00", "2026-07-01T12:30:00+00:00"]
+    clock.at += timedelta(minutes=5)
+    recorder.show(planes(card("other")))
+    clock.at += timedelta(minutes=31)
+    recorder.show(planes(card("third")))
+    recorder.show(planes(card()))
+    assert [s.shown_at for s in kept.kept if s.hex == "abc123"] == ["2026-07-01T12:00:00+00:00", "2026-07-01T12:36:00+00:00"]
 
 
 def test_messages_without_a_plane_are_not_kept():

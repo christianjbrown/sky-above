@@ -284,6 +284,9 @@ ambulances, private helicopters and private planes, a chip for each airline it h
 🌟 **Famous only** for "did anyone interesting fly over?", and 🚨 **Emergencies only** for the planes
 that were in trouble. There's a search box too, for a flight, an owner, an aircraft or a place.
 
+Each visit is one row. A plane that loses the top spot for a moment, or drops off the card
+and comes back within half an hour (`same_visit_minutes`), carries on the row it already has.
+
 It never leaves the Pi. Airline flights are the bulk of it, so they're forgotten after 90 days
 (`airlines_kept_days` in the tunings). Everything rarer, famous planes included, stays for good,
 and at a few hundred bytes a plane that's nothing for the SD card. The same data is at
