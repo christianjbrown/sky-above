@@ -152,6 +152,7 @@ class Tuning:
     cast_launch_seconds: float
     live_host: str
     history_airlines_kept: timedelta
+    history_same_visit: timedelta
     speech_timeout_seconds: float
     spoken_chars_per_second: float
     clip_making_ratio: float
@@ -254,6 +255,7 @@ class Tuning:
             cast_launch_seconds=cast.number("launch_seconds"),
             live_host=live.text("host"),
             history_airlines_kept=timedelta(days=history.number("airlines_kept_days")),
+            history_same_visit=timedelta(minutes=history.number("same_visit_minutes")),
             speech_timeout_seconds=speech.number("timeout_seconds"),
             spoken_chars_per_second=speech.number("spoken_chars_per_second"),
             clip_making_ratio=speech.number("clip_making_ratio"),

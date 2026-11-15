@@ -153,15 +153,20 @@ class Forgetting:
 
 
 class ShownHistory:
-    """Sits beside the real displays and keeps each plane that takes the card, once for each
-    time it does. It is written down as soon as it is shown, and again once it gives the card
-    up, with the closest it came and the lowest it flew while it had it. Draws nothing itself."""
+    """Sits beside the real displays and keeps each visit a plane makes, once. It is written
+    down as soon as it takes the card, and again once it gives the card up, with the closest it
+    came and the lowest it flew while it had it. A plane that takes the card back within
+    same_visit of giving it up, because another plane had the top spot for a moment or the card
+    cleared and came back, carries on the visit it already has rather than starting another.
+    Draws nothing itself."""
 
-    def __init__(self, store: ShownStore, clock: Clock) -> None:
+    def __init__(self, store: ShownStore, clock: Clock, same_visit: timedelta) -> None:
         self._store = store
         self._clock = clock
+        self._same_visit = same_visit
         self._showing: Shown | None = None
         self._written: Shown | None = None
+        self._left: dict[str, tuple[Shown, datetime]] = {}
 
     def show(self, message: dict[str, Any]) -> bool:
         cards = message.get("planes") or []
@@ -170,17 +175,30 @@ class ShownHistory:
         card = cards[0]
         if self._showing is not None and self._showing.hex == card["hex"]:
             self._showing = _closer(self._showing, card)
+            return False
+        self._finish()
+        now = self._clock.now()
+        earlier = self._earlier(card["hex"], now)
+        if earlier is None:
+            self._showing = self._write(_shown(card, now))
         else:
-            self._finish()
-            self._showing = self._write(_shown(card, self._clock.now()))
+            self._written = earlier
+            self._showing = _closer(earlier, card)
         return False
 
     def clear(self) -> None:
         self._finish()
 
+    def _earlier(self, hex_code: str, now: datetime) -> Shown | None:
+        self._left = {h: (s, at) for h, (s, at) in self._left.items() if now - at <= self._same_visit}
+        left = self._left.pop(hex_code, None)
+        return None if left is None else left[0]
+
     def _finish(self) -> None:
-        if self._showing is not None and self._showing != self._written:
-            self._write(self._showing)
+        if self._showing is not None:
+            if self._showing != self._written:
+                self._write(self._showing)
+            self._left[self._showing.hex] = (self._showing, self._clock.now())
         self._showing = self._written = None
 
     def _write(self, shown: Shown) -> Shown:
