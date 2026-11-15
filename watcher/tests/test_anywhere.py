@@ -13,7 +13,7 @@ class ByHex:
         return Notable("A Pop Star", "Celebrity") if aircraft.hex in self._hexes else None
 
 
-SPECIAL = AnySpecial([ServiceKinds(MilitaryService(), ("military",)), FamousOwner(ByHex("famous"))])
+SPECIAL = AnySpecial([ServiceKinds(MilitaryService({}), ("military",)), FamousOwner(ByHex("famous"))])
 
 
 def test_special_aircraft_are_added_after_the_zone_nearest_first():

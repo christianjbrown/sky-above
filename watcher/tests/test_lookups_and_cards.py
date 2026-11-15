@@ -334,11 +334,30 @@ def test_home_country_comes_from_the_nearest_airport():
 
 def test_military_planes_are_a_service_named_by_who_flies_them():
     raf = plane("raf", callsign="RRR4321", military=True, operator="Royal Air Force")
-    finder = FirstService([Services({"HLE": Service("Air ambulance", "ambulance")}), MilitaryService()])
+    finder = FirstService([Services({"HLE": Service("Air ambulance", "ambulance")}), MilitaryService({})])
     assert finder.of(raf) == Service("Royal Air Force", "military")
     assert finder.of(plane("unnamed", military=True, operator=None)) == Service("Military aircraft", "military")
     assert finder.of(plane("hems", callsign="HLE27")) == Service("Air ambulance", "ambulance")
     assert finder.of(plane()) is None
+
+
+def test_a_military_callsign_names_who_flies_the_plane():
+    military = MilitaryService({"RRR": "Royal Air Force"})
+    assert military.of(plane("unflagged", callsign="RRR2734", military=False)) == Service("Royal Air Force", "military")
+    assert military.of(plane("unnamed", callsign="RRR2734", military=True, operator=None)) == Service("Royal Air Force", "military")
+    assert military.of(plane("owner", callsign="RRR2734", military=True, operator="Ministry of Defence")) == Service(
+        "Royal Air Force", "military"
+    )
+    assert military.of(plane("airline", callsign="BAW86S", military=False)) is None
+    assert military.of(plane("tactical", callsign="TARTAN21", military=True, operator="Royal Air Force")) == Service(
+        "Royal Air Force", "military"
+    )
+
+
+def test_the_bundled_military_callsigns_include_the_raf_and_the_usaf():
+    military = MilitaryService.bundled()
+    assert military.of(plane("raf", callsign="RRR4321")) == Service("Royal Air Force", "military")
+    assert military.of(plane("usaf", callsign="RCH123")) == Service("US Air Force", "military")
 
 
 def test_a_service_can_be_known_by_its_squawk():

@@ -74,11 +74,24 @@ class SquawkServices:
 
 
 class MilitaryService:
-    """Military aircraft, as the decoder's database marks them, named by who flies them
-    when it knows ("Royal Air Force")."""
+    """Military aircraft, as the decoder's database marks them or as their callsign gives
+    away (every RRR flight is the Royal Air Force), named by who flies them when either
+    knows. The callsign wins, since it says who is flying the plane today."""
+
+    def __init__(self, operators: Mapping[str, str]) -> None:
+        self._operators = operators
+
+    @classmethod
+    def bundled(cls) -> "MilitaryService":
+        table = json.loads(files("flights_watcher").joinpath("military_callsigns.json").read_text())
+        return cls(table["operators"])
 
     def of(self, plane: Aircraft) -> Service | None:
-        return Service(plane.operator or "Military aircraft", "military") if plane.military else None
+        code = airline_code(plane.callsign)
+        by_callsign = self._operators.get(code) if code else None
+        if not (by_callsign or plane.military):
+            return None
+        return Service(by_callsign or plane.operator or "Military aircraft", "military")
 
 
 class ServiceFinder(Protocol):

@@ -472,7 +472,7 @@ def watcher_for(
                 {code: Service("Air ambulance", "ambulance") for code in settings.air_ambulance_squawks}
                 | {code: Service("Police", "police") for code in settings.police_squawks}
             ),
-            MilitaryService(),
+            MilitaryService.bundled(),
         ]
     )
     closest = ClosestApproach(settings.home, tuning.approach_min_speed_kt)

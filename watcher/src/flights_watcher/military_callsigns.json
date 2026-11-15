@@ -1,0 +1,25 @@
+{
+  "source": "ICAO Doc 8585 operator designators, kept by hand",
+  "operators": {
+    "AME": "Spanish Air Force",
+    "ASY": "Royal Australian Air Force",
+    "BAF": "Belgian Air Force",
+    "CFC": "Canadian Armed Forces",
+    "CNV": "US Navy",
+    "CTM": "French Air Force",
+    "DAF": "Royal Danish Air Force",
+    "FAF": "French Air Force",
+    "GAF": "German Air Force",
+    "HAF": "Hellenic Air Force",
+    "IAM": "Italian Air Force",
+    "IRL": "Irish Air Corps",
+    "KIW": "Royal New Zealand Air Force",
+    "NAF": "Royal Netherlands Air Force",
+    "NOW": "Royal Norwegian Air Force",
+    "PAT": "US Army",
+    "PLF": "Polish Air Force",
+    "RCH": "US Air Force",
+    "RRR": "Royal Air Force",
+    "SVF": "Swedish Air Force"
+  }
+}
