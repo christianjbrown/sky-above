@@ -1,6 +1,5 @@
 from fakes import HOME, plane
-from flights_watcher.anywhere import AnySpecial, FamousOwner, HeardAnywhere, ServiceKinds
-from flights_watcher.naming import MilitaryService
+from flights_watcher.anywhere import FamousOwner, HeardAnywhere
 from flights_watcher.notable import Notable
 from flights_watcher.zone import Zone
 
@@ -13,7 +12,7 @@ class ByHex:
         return Notable("A Pop Star", "Celebrity") if aircraft.hex in self._hexes else None
 
 
-SPECIAL = AnySpecial([ServiceKinds(MilitaryService({}), ("military",)), FamousOwner(ByHex("famous"))])
+SPECIAL = FamousOwner(ByHex("famous", "far", "landed", "unplaced"))
 
 
 def test_special_aircraft_are_added_after_the_zone_nearest_first():
@@ -36,3 +35,8 @@ def test_a_special_plane_in_the_zone_is_not_added_twice():
     finder = HeardAnywhere(Zone(HOME, 3), SPECIAL, HOME)
     found = finder.sightings([plane("famous", lat=HOME.lat + 0.001)])
     assert [(s.aircraft.hex, s.afar) for s in found] == [("famous", False)]
+
+
+def test_a_military_plane_far_away_is_not_added():
+    finder = HeardAnywhere(Zone(HOME, 3), SPECIAL, HOME)
+    assert finder.sightings([plane("raf", lat=HOME.lat + 0.5, military=True)]) == []

@@ -124,7 +124,7 @@ clips_kept = 50
 overhead_now_km = 0.5
 # A flight in the zone is announced only when its destination is known and it passes home
 # lower than this, so it can be heard. Air ambulances, the police, the military and famous
-# owners' planes are announced wherever they are; anything else is shown without a word.
+# owners' planes are announced whatever their height; anything else is shown without a word.
 heard_below_km = 5
 # Flights already announced, so one that drops back to second or leaves and returns within
 # this long stays quiet. A plane still in sight after that is introduced again.
@@ -230,12 +230,13 @@ minutes = 25
 [emergency]
 # A plane in an emergency counts once its squawk or emergency status has held for this
 # many looks, or its climb or descent, steeper than any departure or arrival, for this
-# many; it is over once this long has passed without a look that showed it. A plane can
+# many; it is over, and its card goes, once this long has passed without a look that
+# showed it. A plane can
 # start its descent at well over the steep rate for a few seconds, while a real emergency
 # descent keeps it up for minutes, so the steep rate has to hold for most of a minute.
 held_polls = 3
 steep_held_polls = 45
-clear_seconds = 60
+clear_seconds = 300
 steep_descent_fpm = 6000
 steep_climb_fpm = 8000
 # A steep rate only counts while the altitude has moved at least this share of what the
@@ -244,9 +245,9 @@ steep_altitude_share = 0.5
 announced_remembered = 20
 
 [services]
-# Air ambulance, police and military aircraft get a card and an announcement wherever the
-# antenna hears them, after the planes overhead, as do famous owners' planes. One that
-# comes into the zone keeps the card until it is further than this from home.
+# Air ambulance, police and military aircraft get a card like any other plane, in the zone
+# or on their way into it. One that comes into the zone keeps the card until it is further
+# than this from home, so one circling just outside does not lose it.
 kept = ["ambulance", "police", "military"]
 hold_km = 5
 

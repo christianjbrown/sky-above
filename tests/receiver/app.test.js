@@ -149,7 +149,7 @@ describe("on the Hub", () => {
     expect(text("note")).toBe("Squawk 7700 \u00b7 General emergency");
     vi.advanceTimersByTime(0);
     expect(played).toEqual(["clips/mayday.mp3"]);
-    expect(context.levels).toEqual([0.8]);
+    expect(context.levels).toEqual([1]);
     deliver(planesMessage({ emergency: { kind: "descent", squawk: null, label: "Rapid descent" } }));
     expect(text("note")).toBe("Rapid descent");
     deliver(planesMessage());

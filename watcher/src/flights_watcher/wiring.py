@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from zoneinfo import ZoneInfo
 
 from flights_watcher.announced import RememberedFlights
-from flights_watcher.anywhere import AnySpecial, FamousOwner, HeardAnywhere, ServiceKinds
+from flights_watcher.anywhere import FamousOwner, HeardAnywhere
 from flights_watcher.approach import ApproachFinder, ClosestApproach, LandsFirst, OverheadAndApproaching, SteeredIn
 from flights_watcher.audible import AnyOf, HeardFromTheGround, SpecialAircraft
 from flights_watcher.bound import DestinationBound, SameWay
@@ -590,7 +590,7 @@ def watcher_for(
                 settings.home,
                 tuning.service_hold_km,
             ),
-            AnySpecial([ServiceKinds(services, tuning.services_kept), FamousOwner(notable)]),
+            FamousOwner(notable),
             settings.home,
         ),
         messages=planes_message(voice.planes),

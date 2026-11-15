@@ -24,7 +24,7 @@
   // being closed does not report itself on the way out.
   var HIDDEN_FOR_MS = 3000;
   // How loud an emergency is read out on the Hub, out of 1, unless it is already louder.
-  var EMERGENCY_VOLUME = 0.8;
+  var EMERGENCY_VOLUME = 1;
   var LOOKS = ["waiting", "followed", "emergency", "service-ambulance", "service-police", "service-military"];
 
   var parts = window.CardParts;
