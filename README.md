@@ -315,9 +315,9 @@ there wants it, give Sky Above another one with `HTTP_PORT`. 🔒
 
 ## Good to know
 
-- 🤫 **Quiet hours.** Nothing on the screen from midnight to 8am, except helicopters and military
-  aircraft, which are rare enough to be worth waking up for. Don't want those either? Set
-  `QUIET_HOURS_EXCEPT=` (empty) in `.env`.
+- 🤫 **Quiet hours.** Nothing on the screen from midnight to 8am, except helicopters, which are
+  rare enough to be worth waking up for. Don't want those either? Set `QUIET_HOURS_EXCEPT=`
+  (empty) in `.env`, or `helicopters,military` to let military aircraft through too.
 - 🚨 **Emergencies win.** A plane in an emergency beats everything, quiet hours included, and stays
   up until it has been over for five minutes. Famous people's planes get a card and a voice
   wherever the antenna hears them, after whatever is overhead. Air ambulances, police and
@@ -370,7 +370,7 @@ most likely to change:
 | `ZONE_RADIUS_KM` | How close a plane has to be | kilometres, like `1.5` | `2` |
 | `QUIET_HOURS` | When it won't cast at all | start and end, like `00:00-08:00`, optionally on certain days (`Sat 00:00-10:00`, `Mon-Fri 09:00-17:00`), several comma separated, or empty for never | `00:00-08:00` |
 | `SPEECH_QUIET_HOURS` | When it won't speak | the same as above | `00:00-08:00` |
-| `QUIET_HOURS_EXCEPT` | What still gets through both kinds of quiet hours | `helicopters`, `military`, both, or empty for nothing | `helicopters,military` |
+| `QUIET_HOURS_EXCEPT` | What still gets through both kinds of quiet hours | `helicopters`, `military`, both, or empty for nothing | `helicopters` |
 | `SPEECH_SERVER` | Where the voice comes from | empty for no voice at all | the Pi's own |
 | `PIPER_VOICE` | Which voice it speaks in | any voice name from the list below | `en_GB-southern_english_female-low` |
 | `AEROAPI_MONTHLY_DOLLARS` | Most it spends on AeroAPI route lookups a month | dollars, like `3` | `3` |
