@@ -412,7 +412,7 @@ class RareCards(Protocol):
 
 class QuietVoice:
     """Keeps the announcements quiet during its hours, except for the rare kinds of
-    aircraft (helicopters and military ones, unless told otherwise), which are worth
+    aircraft (helicopters, unless told otherwise), which are worth
     hearing at any time."""
 
     def __init__(self, inner: SpeechPicker, quiet_hours: QuietSchedule, clock: Clock, rare: RareCards) -> None:

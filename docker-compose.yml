@@ -120,7 +120,7 @@ services:
       - POLICE_CALLSIGNS=${POLICE_CALLSIGNS:-}
       - AIR_AMBULANCE_SQUAWKS=${AIR_AMBULANCE_SQUAWKS:-}
       - POLICE_SQUAWKS=${POLICE_SQUAWKS:-}
-      - QUIET_HOURS_EXCEPT=${QUIET_HOURS_EXCEPT-helicopters,military}
+      - QUIET_HOURS_EXCEPT=${QUIET_HOURS_EXCEPT-helicopters}
       - HOME_COUNTRY=${HOME_COUNTRY:-}
       - NOTABLE_AIRCRAFT_URL=${NOTABLE_AIRCRAFT_URL-https://raw.githubusercontent.com/sdr-enthusiasts/plane-alert-db/main/plane-alert-db.csv}
       - NOTABLE_CATEGORIES=${NOTABLE_CATEGORIES-Don't you know who I am?,Oligarch,Football,Royal Aircraft}
