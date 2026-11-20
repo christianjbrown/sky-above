@@ -244,3 +244,12 @@ def test_https_uses_the_certificate_the_certs_service_keeps():
     assert "/certs/certificates/${CERT_DOMAIN}.crt" in https
     assert "include /etc/nginx/card.locations;" in https
     assert "/certs/certificates/${CERT_DOMAIN}.crt" in (REPO / "nginx" / "https.sh").read_text()
+
+
+def test_compose_prunes_the_same_followed_list_the_watcher_reads():
+    services = yaml.safe_load((REPO / "docker-compose.yml").read_text())["services"]
+    watcher = dict(entry.split("=", 1) for entry in services["watcher"]["environment"])
+    pruner = dict(entry.split("=", 1) for entry in services["followed-pruner"]["environment"])
+    assert pruner["FOLLOWED_FILE"] == watcher["FOLLOWED_FILE"]
+    assert pruner["TZ"] == watcher["TZ"]
+    assert "./followed:/etc/flights/followed" in services["followed-pruner"]["volumes"]
