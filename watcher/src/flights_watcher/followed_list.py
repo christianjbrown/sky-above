@@ -41,7 +41,7 @@ class FollowedListFile:
             return []
         found = []
         for line in lines:
-            entry = _entry(line)
+            entry = entry_from_line(line)
             if entry is not None:
                 found.append(entry)
             elif line.strip() and not line.lstrip().startswith("#"):
@@ -54,7 +54,7 @@ class FollowedListFile:
             self._logger.warning("followed flights: %s", problem)
 
 
-def _entry(line: str) -> FollowedEntry | None:
+def entry_from_line(line: str) -> FollowedEntry | None:
     words = line.split("#", 1)[0].split()
     if len(words) != 2:
         return None

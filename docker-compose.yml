@@ -156,6 +156,22 @@ services:
       - STATUS_URL=http://localhost:${LIVE_PORT:-8091}/status.json
       - ALERT_URL=${ALERT_URL:-}
 
+  # Takes flights that are over off followed/flights.txt. The watcher only reads the list,
+  # so this runs as the user who owns it (OWNER_UID, 1000 is the Pi's first user) and the
+  # file stays theirs to edit.
+  followed-pruner:
+    build: ./watcher
+    container_name: followed-pruner
+    restart: unless-stopped
+    network_mode: none
+    user: ${OWNER_UID:-1000}:${OWNER_GID:-1000}
+    command: ["/app/.venv/bin/python", "-m", "flights_watcher.followed_pruner"]
+    environment:
+      - TZ=${FEEDER_TZ:-UTC}
+      - FOLLOWED_FILE=/etc/flights/followed/flights.txt
+    volumes:
+      - ./followed:/etc/flights/followed
+
   # Turns announcements into speech for the watcher, which saves them as clips
   # for the card to play on the Hub's own speaker. Only the Pi itself can reach it.
   piper:

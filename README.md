@@ -203,6 +203,9 @@ Picking someone up, or off on holiday yourself?
 
 3. Save. That's it, no restart needed.
 
+Once a flight is a couple of days behind you it takes itself off the list 🧹, so the file only ever
+holds trips still to come. Comments and anything else you've written stay put.
+
 On the day, when no plane is overhead, the screen shows:
 
 - **Before take-off:** a countdown, the gate, and any delay, in red
@@ -387,6 +390,7 @@ most likely to change:
 | `PORTRAIT_API_URL` | Where owners' pictures come from | Wikipedia's REST API address, or empty for no pictures | English Wikipedia |
 | `NOTABLE_AIRCRAFT_URL` | Where the list of notable aircraft comes from | an address, or empty for none | plane-alert-db on GitHub |
 | `ALERT_URL` | Where the watchdog sends alerts | an ntfy topic address, or empty to only log them | empty |
+| `OWNER_UID`, `OWNER_GID` | Who owns `followed/flights.txt`, so finished flights are taken off it as them | `id -u` and `id -g` on the Pi | `1000` |
 
 🗣️ **Picking a voice.** Have a listen on [Piper's samples page](https://rhasspy.github.io/piper-samples/),
 pick one, and use its name, which is the language, the voice and the quality joined by hyphens. A
@@ -461,6 +465,7 @@ Both need your exact position for MLAT. Both let you hide it from your public st
 | `ultrafeeder` | Decodes the radio, draws the map at `:8080` |
 | `watcher` | Picks the plane and casts the card (the Python in this repo) |
 | `watchdog` | Checks the watcher every minute and sends alerts (the same Python) |
+| `followed-pruner` | Takes finished flights off your followed list (the same Python again) |
 | `receiver` | Serves the card page at `:8090` |
 | `piper` | Turns announcements into speech, on the Pi |
 | `piaware`, `flightradar24` | The optional feeders |
