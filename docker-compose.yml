@@ -227,7 +227,7 @@ services:
   # internet. It checks twice a day and only renews once a third of a
   # certificate's life is left, trying again in an hour if any name failed.
   certs:
-    image: goacme/lego:v5.6.0
+    image: goacme/lego:v5.7.0
     container_name: certs
     restart: unless-stopped
     entrypoint:
