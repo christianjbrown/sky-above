@@ -53,35 +53,48 @@ class Shown:
     emergency: str | None
     closest_km: float
     lowest_ft: int | None
+    # When the plane was last on the card, so a visit can carry on after the watcher restarts.
+    seen_at: str
 
 
 _COLUMNS = (
     "hex, shown_at, kind, callsign, flight_number, registration, aircraft, type_code, airline, "
-    "origin, destination, owner, owner_category, emergency, closest_km, lowest_ft"
+    "origin, destination, owner, owner_category, emergency, closest_km, lowest_ft, seen_at"
 )
 _TABLE = (
     "CREATE TABLE IF NOT EXISTS shown ("
     "hex TEXT NOT NULL, shown_at TEXT NOT NULL, kind TEXT NOT NULL, callsign TEXT, flight_number TEXT, "
     "registration TEXT, aircraft TEXT, type_code TEXT, airline TEXT, origin TEXT, destination TEXT, "
     "owner TEXT, owner_category TEXT, emergency TEXT, closest_km REAL NOT NULL, lowest_ft INTEGER, "
-    "PRIMARY KEY (hex, shown_at))"
+    "seen_at TEXT, PRIMARY KEY (hex, shown_at))"
 )
 _INDEX = "CREATE INDEX IF NOT EXISTS shown_at ON shown (shown_at)"
+# A history kept before seen_at existed gets the column, empty, which reads as shown_at.
+_SEEN_COLUMN = "seen_at"
+_TABLE_COLUMNS = "SELECT name FROM pragma_table_info('shown')"
+_ADD_SEEN = f"ALTER TABLE shown ADD COLUMN {_SEEN_COLUMN} TEXT"
 _KEEP = (
     f"INSERT OR REPLACE INTO shown ({_COLUMNS}) VALUES (:hex, :shown_at, :kind, :callsign, :flight_number, "  # noqa: S608
     ":registration, :aircraft, :type_code, :airline, :origin, :destination, :owner, :owner_category, "
-    ":emergency, :closest_km, :lowest_ft)"
+    ":emergency, :closest_km, :lowest_ft, :seen_at)"
 )
 _ALL = f"SELECT {_COLUMNS} FROM shown ORDER BY shown_at DESC"  # noqa: S608 - no outside input
+_LAST = f"SELECT {_COLUMNS} FROM shown WHERE hex = ? ORDER BY shown_at DESC LIMIT 1"  # noqa: S608
 # Only airline flights are forgotten: everything else is rare enough to keep for good.
 _FORGET = "DELETE FROM shown WHERE shown_at < ? AND kind = ?"
 
 
-class ShownStore(Protocol):
+class Visits(Protocol):
     def keep(self, shown: Shown) -> None:
         """Adds a plane's time on the card, or replaces what was kept for it so far."""
         ...
 
+    def last_visit(self, hex_code: str) -> Shown | None:
+        """The plane's latest time on the card, if it has had one."""
+        ...
+
+
+class ShownStore(Visits, Protocol):
     def everything(self) -> list[Shown]:
         """Every plane kept, newest first."""
         ...
@@ -108,14 +121,21 @@ class SqliteShownStore:
         self._write(_FORGET, (_stamp(cutoff), Kind.AIRLINE), "could not forget old flights")
 
     def everything(self) -> list[Shown]:
+        return self._read(_ALL, ())
+
+    def last_visit(self, hex_code: str) -> Shown | None:
+        rows = self._read(_LAST, (hex_code,))
+        return rows[0] if rows else None
+
+    def _read(self, statement: str, values: Any) -> list[Shown]:
         try:
             with closing(self._connect()) as db:
                 db.row_factory = sqlite3.Row
-                rows = db.execute(_ALL).fetchall()
+                rows = db.execute(statement, values).fetchall()
         except sqlite3.Error as error:
             self._logger.warning("could not read the history: %s", error)
             return []
-        return [Shown(**dict(row)) for row in rows]
+        return [_row(row) for row in rows]
 
     def _write(self, statement: str, values: Any, failure: str) -> None:
         try:
@@ -129,6 +149,8 @@ class SqliteShownStore:
         try:
             db.execute(_TABLE)
             db.execute(_INDEX)
+            if (_SEEN_COLUMN,) not in db.execute(_TABLE_COLUMNS).fetchall():
+                db.execute(_ADD_SEEN)
         except sqlite3.Error:
             db.close()
             raise
@@ -151,22 +173,30 @@ class Forgetting:
     def everything(self) -> list[Shown]:
         return self._store.everything()
 
+    def last_visit(self, hex_code: str) -> Shown | None:
+        return self._store.last_visit(hex_code)
+
+
+def _row(row: sqlite3.Row) -> Shown:
+    """A kept plane, with one kept before seen_at existed last seen when it took the card."""
+    fields = dict(row)
+    return Shown(**{**fields, _SEEN_COLUMN: fields[_SEEN_COLUMN] or fields["shown_at"]})
+
 
 class ShownHistory:
     """Sits beside the real displays and keeps each visit a plane makes, once. It is written
     down as soon as it takes the card, and again once it gives the card up, with the closest it
-    came and the lowest it flew while it had it. A plane that takes the card back within
-    same_visit of giving it up, because another plane had the top spot for a moment or the card
-    cleared and came back, carries on the visit it already has rather than starting another.
+    came, the lowest it flew and when it was last seen. A plane that takes the card back within
+    same_visit of last being seen, because another plane had the top spot for a moment, the card
+    cleared and came back, or the watcher restarted, carries on the visit it already has rather
+    than starting another. The visit is looked up in the store, so it survives a restart.
     Draws nothing itself."""
 
-    def __init__(self, store: ShownStore, clock: Clock, same_visit: timedelta) -> None:
+    def __init__(self, store: Visits, clock: Clock, same_visit: timedelta) -> None:
         self._store = store
         self._clock = clock
         self._same_visit = same_visit
         self._showing: Shown | None = None
-        self._written: Shown | None = None
-        self._left: dict[str, tuple[Shown, datetime]] = {}
 
     def show(self, message: dict[str, Any]) -> bool:
         cards = message.get("planes") or []
@@ -178,33 +208,25 @@ class ShownHistory:
             return False
         self._finish()
         now = self._clock.now()
-        earlier = self._earlier(card["hex"], now)
-        if earlier is None:
-            self._showing = self._write(_shown(card, now))
+        earlier = self._store.last_visit(card["hex"])
+        if earlier is not None and now - datetime.fromisoformat(earlier.seen_at) <= self._same_visit:
+            self._showing = self._write(_closer(earlier, card), now)
         else:
-            self._written = earlier
-            self._showing = _closer(earlier, card)
+            self._showing = self._write(_shown(card, now), now)
         return False
 
     def clear(self) -> None:
         self._finish()
 
-    def _earlier(self, hex_code: str, now: datetime) -> Shown | None:
-        self._left = {h: (s, at) for h, (s, at) in self._left.items() if now - at <= self._same_visit}
-        left = self._left.pop(hex_code, None)
-        return None if left is None else left[0]
-
     def _finish(self) -> None:
         if self._showing is not None:
-            if self._showing != self._written:
-                self._write(self._showing)
-            self._left[self._showing.hex] = (self._showing, self._clock.now())
-        self._showing = self._written = None
+            self._write(self._showing, self._clock.now())
+        self._showing = None
 
-    def _write(self, shown: Shown) -> Shown:
-        self._store.keep(shown)
-        self._written = shown
-        return shown
+    def _write(self, shown: Shown, seen: datetime) -> Shown:
+        seen_now = replace(shown, seen_at=_stamp(seen))
+        self._store.keep(seen_now)
+        return seen_now
 
 
 def _shown(card: dict[str, Any], now: datetime) -> Shown:
@@ -226,6 +248,7 @@ def _shown(card: dict[str, Any], now: datetime) -> Shown:
         emergency=emergency.get("label") if emergency else None,
         closest_km=card["distanceKm"],
         lowest_ft=card.get("altitudeFt"),
+        seen_at=_stamp(now),
     )
 
 
