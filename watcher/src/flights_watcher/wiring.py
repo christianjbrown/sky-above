@@ -148,6 +148,7 @@ from flights_watcher.speech import (
     SpokenWhereabouts,
     WyomingSpeech,
 )
+from flights_watcher.spots import CountAimed, CountFlown, LearnedSpots, PoorOdds, SpotGrid, SqliteSpotStore
 from flights_watcher.standby import FollowedStandby, NothingOnStandby
 from flights_watcher.status import AllObservers, DailyTally, HeardSource, WatchStatus
 from flights_watcher.tuning import Tuning
@@ -512,8 +513,20 @@ def watcher_for(
         tuning.path_kept_for,
         clock,
     )
+    spots_file = str(pathlib.Path(settings.state_dir) / tuning.spots_file)
+    grid = SpotGrid(settings.home, tuning.spot_size)
+
+    def spots(kind: str) -> LearnedSpots:
+        return LearnedSpots(SqliteSpotStore(spots_file, kind, logger), grid, tuning.spot_half_life, tuning.spots_kept_for, clock)
+
+    aimed, flown = spots("aimed"), spots("flown")
     recorder = PathRecorder(
-        [CameOverhead(paths, bound, zone.radius_km, logger), MissedIt(misses, bound, zone.radius_km, logger)],
+        [
+            CameOverhead(paths, bound, zone.radius_km, logger),
+            MissedIt(misses, bound, zone.radius_km, logger),
+            CountAimed(aimed, zone.radius_km),
+            CountFlown(flown, zone.radius_km),
+        ],
         closest,
         settings.home,
         zone.radius_km,
@@ -536,6 +549,7 @@ def watcher_for(
                     LandsFirst(),
                     SteeredIn(tuning.steered_below_ft, tuning.steered_beyond_km, tuning.descending_fpm),
                     MissedBefore(misses, paths, bound, SameWay(tuning.bound_within_deg), tuning.misses_min),
+                    PoorOdds(aimed, tuning.aimed_min_seen, tuning.aimed_min_share),
                 ],
             ),
             PathFinder(
@@ -546,6 +560,7 @@ def watcher_for(
                 zone.radius_km,
                 tuning.path_min_planes,
                 tuning.path_held_polls,
+                [PoorOdds(flown, tuning.flown_min_seen, tuning.flown_min_share)],
             ),
         ]
     )

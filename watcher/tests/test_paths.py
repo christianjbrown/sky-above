@@ -94,7 +94,7 @@ def recording(hits: MemoryStore, clock: FakeClock, misses: MemoryStore | None = 
 
 
 def test_a_plane_turning_onto_a_route_two_earlier_planes_flew_overhead_is_on_its_way():
-    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 1.0, 2, 3)
+    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 1.0, 2, 3, [])
     turning = plane("new", at(8.1, -0.1), track_deg=310.0, altitude_ft=3400)
     assert not finder.sightings([turning])
     assert not finder.sightings([turning])
@@ -104,12 +104,12 @@ def test_a_plane_turning_onto_a_route_two_earlier_planes_flew_overhead_is_on_its
 
 
 def test_one_earlier_plane_is_not_enough_to_trust_a_route():
-    finder = PathFinder(learned(departure("one")), Bounds(), WAY, HOME, 1.0, 2, 1)
+    finder = PathFinder(learned(departure("one")), Bounds(), WAY, HOME, 1.0, 2, 1, [])
     assert not finder.sightings([plane("new", at(8, 0), track_deg=300.0, altitude_ft=3500)])
 
 
 def test_the_other_runway_or_a_plane_far_higher_is_not_on_the_route():
-    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 1.0, 2, 1)
+    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 1.0, 2, 1, [])
     other_way = plane("other", at(8, 0), track_deg=120.0, altitude_ft=3500)
     high = plane("high", at(8, 0), track_deg=300.0, altitude_ft=12000)
     elsewhere = plane("elsewhere", at(8, 3), track_deg=300.0, altitude_ft=3500)
@@ -117,14 +117,14 @@ def test_the_other_runway_or_a_plane_far_higher_is_not_on_the_route():
 
 
 def test_a_plane_on_its_way_is_dropped_once_it_leaves_the_route():
-    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 1.0, 2, 1)
+    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 1.0, 2, 1, [])
     assert finder.sightings([plane("new", at(8, 0), track_deg=300.0, altitude_ft=3500)])
     assert finder.sightings([plane("new", at(4, 0), track_deg=270.0, altitude_ft=4000)])
     assert not finder.sightings([plane("new", at(4, 2), track_deg=0.0, altitude_ft=4500)])
 
 
 def test_a_plane_inside_the_zone_is_left_to_the_zone():
-    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 5.0, 2, 1)
+    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 5.0, 2, 1, [])
     assert not finder.sightings([plane("new", at(4, 0), track_deg=270.0, altitude_ft=4000)])
 
 
@@ -311,7 +311,7 @@ def test_only_planes_in_the_air_with_a_position_within_reach_are_recorded():
 
 
 def test_a_plane_with_no_position_is_not_on_its_way():
-    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 1.0, 2, 1)
+    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 1.0, 2, 1, [])
     assert not finder.sightings([plane("new", at(8, 0), location=None, track_deg=300.0)])
 
 
@@ -340,14 +340,14 @@ def test_a_plane_first_seen_overhead_has_no_way_in_to_learn():
 def test_a_plane_bound_elsewhere_from_the_planes_that_came_overhead_is_not_on_their_route():
     paths = learned(departure("one", EAST), departure("two", EAST))
     on_the_line = plane("new", at(8, 0), track_deg=300.0, altitude_ft=3500)
-    assert not PathFinder(paths, Bounds(NORTH), WAY, HOME, 1.0, 2, 1).sightings([on_the_line])
-    assert PathFinder(paths, Bounds(EAST + 20), WAY, HOME, 1.0, 2, 1).sightings([on_the_line])
-    assert PathFinder(paths, Bounds(None), WAY, HOME, 1.0, 2, 1).sightings([on_the_line])
+    assert not PathFinder(paths, Bounds(NORTH), WAY, HOME, 1.0, 2, 1, []).sightings([on_the_line])
+    assert PathFinder(paths, Bounds(EAST + 20), WAY, HOME, 1.0, 2, 1, []).sightings([on_the_line])
+    assert PathFinder(paths, Bounds(None), WAY, HOME, 1.0, 2, 1, []).sightings([on_the_line])
 
 
 def test_a_plane_is_only_looked_up_once_it_is_on_enough_paths():
     bound = Bounds(EAST)
-    finder = PathFinder(learned(departure("one", EAST)), bound, WAY, HOME, 1.0, 2, 1)
+    finder = PathFinder(learned(departure("one", EAST)), bound, WAY, HOME, 1.0, 2, 1, [])
     assert not finder.sightings([plane("new", at(8, 0), track_deg=300.0, altitude_ft=3500)])
     assert bound.asked == []
 
@@ -355,7 +355,7 @@ def test_a_plane_is_only_looked_up_once_it_is_on_enough_paths():
 def test_a_plane_followed_along_a_route_is_dropped_once_none_bound_its_way_remain():
     paths = learned(departure("one", EAST), departure("two", EAST), departure("three", NORTH))
     bound = Bounds(EAST)
-    finder = PathFinder(paths, bound, WAY, HOME, 1.0, 2, 1)
+    finder = PathFinder(paths, bound, WAY, HOME, 1.0, 2, 1, [])
     assert finder.sightings([plane("new", at(8, 0), track_deg=300.0, altitude_ft=3500)])
     bound._default = 200.0
     assert not finder.sightings([plane("new", at(4, 0), track_deg=270.0, altitude_ft=4000)])
@@ -400,3 +400,19 @@ def test_learned_paths_keep_which_way_each_plane_was_bound(tmp_path):
     saved = JsonPathStore(tmp_path / "paths.json", LOGGER)
     saved.save([*store.paths, departure("unknown")])
     assert [p.bound_deg for p in saved.load()] == [NORTH, None]
+
+
+def test_a_plane_an_exclusion_rules_out_is_not_on_its_way_but_one_already_followed_stays():
+    class Until:
+        def __init__(self) -> None:
+            self.on = False
+
+        def excludes(self, plane, distance_km: float, seconds_to_closest: float) -> bool:
+            return self.on
+
+    rule = Until()
+    finder = PathFinder(learned(departure("one"), departure("two")), Bounds(), WAY, HOME, 1.0, 2, 1, [rule])
+    assert finder.sightings([plane("new", at(8, 0), track_deg=300.0, altitude_ft=3500)])
+    rule.on = True
+    assert finder.sightings([plane("new", at(4, 0), track_deg=270.0, altitude_ft=4000)])
+    assert not finder.sightings([plane("other", at(8, 0), track_deg=300.0, altitude_ft=3500)])

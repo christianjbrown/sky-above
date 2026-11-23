@@ -53,6 +53,7 @@ followed_budget_file = "followed-aeroapi.json"
 announced_file = "announced.json"
 paths_file = "paths.json"
 misses_file = "missed.json"
+spots_file = "spots.sqlite3"
 notable_file = "plane-alert-db.csv"
 history_file = "history.sqlite3"
 
@@ -191,6 +192,26 @@ kept_days = 90
 # Two planes that looked on their way from the same spot and missed, and none that came
 # over, and a plane from there is no longer taken to be on its way.
 misses_min = 2
+
+[spots]
+# Every plane that flies within the paths' km is counted at each spot it passed on its way
+# in, a spot being a square of ground km across, a band of height ft deep and a band of
+# heading deg wide, with whether it then came within the zone. Counts fade by half every
+# half_life_days, so a change of runway shows within days, and a spot nothing has passed for
+# kept_days is forgotten. A plane whose straight line runs through the zone is not believed
+# where at least aimed_min_seen earlier planes with their line through the zone passed and
+# fewer than aimed_min_share of them came over. One on the learned paths is held to more,
+# since it is not even pointing at home yet: flown_min_seen planes and flown_min_share.
+# A spot fewer planes have passed than that is taken on trust.
+km = 2
+ft = 1000
+deg = 20
+half_life_days = 14
+kept_days = 60
+aimed_min_seen = 3
+aimed_min_share = 0.5
+flown_min_seen = 3
+flown_min_share = 0.8
 
 [followed]
 # Followed flights show from four hours before they are due out until half an hour after

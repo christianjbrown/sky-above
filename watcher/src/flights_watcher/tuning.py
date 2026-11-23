@@ -14,6 +14,7 @@ from flights_watcher.estimate import TurnaroundRule
 from flights_watcher.faces import Framing
 from flights_watcher.following import FollowTiming
 from flights_watcher.paths import Likeness
+from flights_watcher.spots import SpotSize
 
 MINUTE = 60
 HOUR = 60 * MINUTE
@@ -147,6 +148,7 @@ class Tuning:
     announced_file: str
     paths_file: str
     misses_file: str
+    spots_file: str
     notable_file: str
     history_file: str
     # Each airport's code with the city to say for it.
@@ -191,6 +193,13 @@ class Tuning:
     paths_kept: int
     path_kept_for: timedelta
     misses_min: int
+    spot_size: SpotSize
+    spot_half_life: timedelta
+    spots_kept_for: timedelta
+    aimed_min_seen: float
+    aimed_min_share: float
+    flown_min_seen: float
+    flown_min_share: float
     follow_timing: FollowTiming
     late_minutes: int
     delay_step_minutes: int
@@ -236,6 +245,7 @@ class Tuning:
         surroundings, approach, paths = root.table("map"), root.table("approach"), root.table("paths")
         followed, emergency, services = root.table("followed"), root.table("emergency"), root.table("services")
         notable, portraits, history = root.table("notable"), root.table("portraits"), root.table("history")
+        spots = root.table("spots")
         tuning = cls(
             user_agent=http.text("user_agent"),
             http_timeout_seconds=http.number("timeout_seconds"),
@@ -257,6 +267,7 @@ class Tuning:
             announced_file=state.text("announced_file"),
             paths_file=state.text("paths_file"),
             misses_file=state.text("misses_file"),
+            spots_file=state.text("spots_file"),
             notable_file=state.text("notable_file"),
             history_file=state.text("history_file"),
             airport_cities={code: city for city, codes in airports.lists("cities").items() for code in codes},
@@ -302,6 +313,13 @@ class Tuning:
             paths_kept=paths.whole("kept"),
             path_kept_for=timedelta(days=paths.number("kept_days")),
             misses_min=paths.whole("misses_min"),
+            spot_size=SpotSize(km=spots.number("km"), ft=spots.whole("ft"), deg=spots.number("deg")),
+            spot_half_life=timedelta(days=spots.number("half_life_days")),
+            spots_kept_for=timedelta(days=spots.number("kept_days")),
+            aimed_min_seen=spots.number("aimed_min_seen"),
+            aimed_min_share=spots.number("aimed_min_share"),
+            flown_min_seen=spots.number("flown_min_seen"),
+            flown_min_share=spots.number("flown_min_share"),
             follow_timing=FollowTiming(
                 lead=timedelta(hours=followed.number("lead_hours")),
                 tail=timedelta(minutes=followed.number("tail_minutes")),

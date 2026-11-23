@@ -26,7 +26,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
 from flights_watcher.aircraft import Aircraft
-from flights_watcher.approach import SightingFinder
+from flights_watcher.approach import Exclusion, SightingFinder
 from flights_watcher.bound import Bound, SameWay
 from flights_watcher.clock import Clock
 from flights_watcher.geo import Location
@@ -336,12 +336,23 @@ class PathFinder:
     """Planes outside the zone on the path at least min_paths earlier planes bound the same
     way flew overhead, for held_polls looks in a row. From then on one is followed while it
     is still on any of them, and given the time those planes took from there to their
-    closest point. Which way a plane is bound is only looked up once it is on enough paths."""
+    closest point. Which way a plane is bound is only looked up once it is on enough paths.
+    A plane any of the exclusions rules out is not taken to be on its way (see PoorOdds):
+    two planes that came over from a spot say little when twenty more turned away there."""
 
     def __init__(
-        self, paths: LearnedPaths, bound: Bound, way: SameWay, centre: Location, radius_km: float, min_paths: int, held_polls: int
+        self,
+        paths: LearnedPaths,
+        bound: Bound,
+        way: SameWay,
+        centre: Location,
+        radius_km: float,
+        min_paths: int,
+        held_polls: int,
+        exclusions: Sequence[Exclusion],
     ) -> None:
         self._paths = paths
+        self._exclusions = exclusions
         self._bound = bound
         self._way = way
         self._centre = centre
@@ -368,11 +379,14 @@ class PathFinder:
             on = [p for p in on if self._way.alike(p.bound_deg, bound_deg)]
             if len(on) < needed:
                 continue
+            seconds = statistics.median(p.seconds_to_closest for p in on)
             if not following:
+                if any(rule.excludes(plane, distance_km, seconds) for rule in self._exclusions):
+                    continue
                 held[plane.hex] = self._held.get(plane.hex, 0) + 1
                 if held[plane.hex] < self._held_polls:
                     continue
-            found.append(Sighting(plane, distance_km, statistics.median(p.seconds_to_closest for p in on), approaching=True))
+            found.append(Sighting(plane, distance_km, seconds, approaching=True))
         self._held = held
         self._following = {s.aircraft.hex for s in found}
         return found

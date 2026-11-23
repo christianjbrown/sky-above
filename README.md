@@ -498,6 +498,13 @@ Both need your exact position for MLAT. Both let you hide it from your public st
   comes your way are told apart. Those notes live in `missed.json`. With an AeroAPI key, the
   direction comes only from routes already looked up for a card, so a plane that never comes
   near costs nothing; a flight that passes daily is known from its second day.
+- It keeps score of every spot, too. Each plane within 25 km is counted at every spot it flew
+  through on the way in (a 2 km square, a 1,000 ft band and a 20° band of heading), along with
+  whether it then came over. A straight line from a spot where fewer than half the planes really
+  came over doesn't count, and neither does a learned path from a spot where fewer than eight in
+  ten did. That's what stops the evening arrivals that point at you level at 8,000 ft and then
+  turn onto final 9 km short. 🛬 Old counts fade by half every two weeks, so a change of runway
+  catches up within days. The scores live in `spots.sqlite3`.
 - The card stays 30 seconds after the plane leaves (`LINGER_SECONDS`), and at least a minute in all
   (`CARD_MIN_SECONDS`).
 - Places in your own country (`HOME_COUNTRY`) have no flag. Leave it empty and it goes by the
