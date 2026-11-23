@@ -1,7 +1,7 @@
-"""Which planes on the card are worth saying out loud. Every plane overhead is shown, but
-only the ones worth listening out for are announced: an air ambulance, the police, the
-military or a famous owner's plane, however high it is, and a flight going somewhere known
-that will be low enough over home to be heard."""
+"""Which planes on the card are worth saying out loud. Every plane on the card is shown, but
+only two kinds are announced: an air ambulance or the police, wherever they are and however
+high, and any flight in the zone or on course into it that will be low enough over home to
+be heard. A plane in an emergency has its own announcement (see emergency_speech)."""
 
 from collections.abc import Collection, Sequence
 from typing import Any, Protocol
@@ -14,31 +14,37 @@ class SpokenRule(Protocol):
     def includes(self, card: dict[str, Any]) -> bool: ...
 
 
-class SpecialAircraft:
-    """A plane with one of these kinds of service, or with a famous owner."""
+class SpokenServices:
+    """A plane flying one of these kinds of service."""
 
     def __init__(self, kinds: Collection[str]) -> None:
         self._kinds = kinds
 
     def includes(self, card: dict[str, Any]) -> bool:
-        return card.get("service") in self._kinds or bool(card.get("owner"))
+        return card.get("service") in self._kinds
 
 
 class HeardFromTheGround:
-    """A flight whose destination is known, at a height below below_km as it passes home:
-    where it is now for one in the zone, and where its climb or descent will have taken it
-    for one still on its way. A plane that does not say how high it is stays quiet."""
+    """A flight in the zone, or on course to pass through it, at a height below below_km as
+    it passes home: where it is now for one in the zone, and where its climb or descent will
+    have taken it for one still on its way. A plane that does not say how high it is, or
+    that is outside the zone with no closest approach inside it, stays quiet."""
 
-    def __init__(self, below_km: float) -> None:
+    def __init__(self, below_km: float, zone_radius_km: float) -> None:
         self._below_ft = below_km * FEET_PER_KM
+        self._zone_radius_km = zone_radius_km
 
     def includes(self, card: dict[str, Any]) -> bool:
         altitude = card.get("altitudeFt")
-        if not card.get("destination") or altitude is None:
+        if altitude is None or not self._passes_home(card):
             return False
         rate, seconds = card.get("verticalRateFpm"), card.get("overheadInSeconds")
         passing = altitude + rate * seconds / SECONDS_PER_MINUTE if rate and seconds else altitude
         return bool(passing < self._below_ft)
+
+    def _passes_home(self, card: dict[str, Any]) -> bool:
+        # overheadInSeconds is only set for a plane whose course takes it into the zone.
+        return card.get("overheadInSeconds") is not None or card.get("distanceKm", float("inf")) <= self._zone_radius_km
 
 
 class AnyOf:

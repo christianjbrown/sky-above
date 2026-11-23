@@ -122,10 +122,11 @@ clips_kept = 50
 # An announcement ends "It's overhead now." when the plane will be this close by the time
 # it has been read out.
 overhead_now_km = 0.5
-# A flight in the zone is announced only when its destination is known and it passes home
-# lower than this, so it can be heard. Air ambulances, the police, the military and famous
-# owners' planes are announced whatever their height; anything else is shown without a word.
-heard_below_km = 5
+# A flight in the zone, or on course into it, is announced only when it passes home lower
+# than this, so it can be heard. These services are announced wherever they are and however
+# high; anything else is shown without a word. An emergency is always announced.
+heard_below_km = 2
+spoken_services = ["ambulance", "police"]
 # Flights already announced, so one that drops back to second or leaves and returns within
 # this long stays quiet. A plane still in sight after that is introduced again.
 announced_kept_hours = 1

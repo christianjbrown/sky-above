@@ -230,8 +230,8 @@ Each followed flight costs roughly 50 cents to $2 in AeroAPI lookups.
 ## Famous aircraft 🌟
 
 Sometimes the plane overhead belongs to somebody you've heard of. When it does, the card says who,
-with their picture where the airline logo usually goes, and the voice adds "belonging to ..." after
-the plane.
+with their picture where the airline logo usually goes, and if it's low enough to be announced the
+voice adds "belonging to ..." after the plane.
 
 ![A made-up private jet with a made-up pop star as its owner, a silhouette in the logo's place](docs/screenshots/notable.jpg)
 
@@ -322,14 +322,15 @@ there wants it, give Sky Above another one with `HTTP_PORT`. 🔒
   rare enough to be worth waking up for. Don't want those either? Set `QUIET_HOURS_EXCEPT=`
   (empty) in `.env`, or `helicopters,military` to let military aircraft through too.
 - 🚨 **Emergencies win.** A plane in an emergency beats everything, quiet hours included, and stays
-  up until it has been over for five minutes. Famous people's planes get a card and a voice
+  up until it has been over for five minutes. Famous people's planes get a card
   wherever the antenna hears them, after whatever is overhead. Air ambulances, police and
   military aircraft get one like any other plane, in the zone or on their way into it, and one
   that comes into the zone keeps the card until it's 5 km away, so a plane passing through
   waits its turn.
-- 🔇 **Only what you'll hear gets a voice.** A flight overhead is announced when its destination is
-  known and it passes lower than 5 km, so you can hear it (`heard_below_km` in the tunings).
-  Anything higher, or with no destination, is shown without a word.
+- 🔇 **Only what you'll hear gets a voice.** A flight is announced when it's in the zone, or on
+  course into it, and passes lower than 2 km, so you can hear it (`heard_below_km` in the
+  tunings). Air ambulances and the police are always announced, however high
+  (`spoken_services`), and so is any emergency. Everything else is shown without a word.
   On a Nest Hub the emergency announcement turns the volume all the way up (never down) and puts
   it back afterwards.
 - 🔔 **It tells you when it's stuck.** A little watchdog checks on the watcher every minute and
