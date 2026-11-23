@@ -1,5 +1,6 @@
 import logging
 import sqlite3
+from contextlib import closing
 from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
@@ -20,7 +21,7 @@ def planes(*cards):
 
 
 def shown(hex_code="abc123", at="2026-11-01T12:00:00+00:00", kind=Kind.AIRLINE, owner=None, km=3.0):
-    return Shown(hex_code, at, kind, None, None, None, None, None, None, None, None, owner, None, None, km, 4000)
+    return Shown(hex_code, at, kind, None, None, None, None, None, None, None, None, owner, None, None, km, 4000, at)
 
 
 class Kept:
@@ -37,9 +38,13 @@ class Kept:
     def everything(self):
         return list(self.kept)
 
+    def last_visit(self, hex_code):
+        mine = [s for s in self.kept if s.hex == hex_code]
+        return mine[-1] if mine else None
 
-def history():
-    kept, clock = Kept(), FakeClock(datetime(2026, 7, 1, 13, 0, tzinfo=BST))
+
+def history(kept=None, clock=None):
+    kept, clock = kept or Kept(), clock or FakeClock(datetime(2026, 7, 1, 13, 0, tzinfo=BST))
     return ShownHistory(kept, clock, timedelta(minutes=30)), kept, clock
 
 
@@ -75,6 +80,7 @@ def test_a_plane_is_kept_as_soon_as_it_takes_the_card_with_everything_the_card_s
             "General emergency",
             3.0,
             4000,
+            "2026-07-01T12:00:00+00:00",
         )
     ]
 
@@ -133,12 +139,13 @@ def test_a_plane_with_no_height_at_all_keeps_none():
     assert kept.kept[-1].lowest_ft is None
 
 
-def test_clearing_writes_the_last_plane_only_when_it_changed():
-    recorder, kept, _ = history()
+def test_clearing_writes_when_the_last_plane_was_seen_once():
+    recorder, kept, clock = history()
     recorder.show(planes(card()))
+    clock.at += timedelta(minutes=1)
     recorder.clear()
     recorder.clear()
-    assert len(kept.kept) == 1
+    assert [s.seen_at for s in kept.kept] == ["2026-07-01T12:00:00+00:00", "2026-07-01T12:01:00+00:00"]
 
 
 def test_a_plane_back_on_the_card_soon_after_carries_on_its_visit():
@@ -153,7 +160,28 @@ def test_a_plane_back_on_the_card_soon_after_carries_on_its_visit():
     recorder.clear()
     mine = [s for s in kept.kept if s.hex == "abc123"]
     assert {s.shown_at for s in mine} == {"2026-07-01T12:00:00+00:00"}
-    assert [s.closest_km for s in mine] == [5.0, 2.0]
+    assert (mine[-1].closest_km, mine[-1].seen_at) == (2.0, "2026-07-01T12:32:00+00:00")
+
+
+def test_a_plane_still_on_the_card_after_a_restart_carries_on_its_visit():
+    before, kept, clock = history()
+    before.show(planes(card(km=10.3, ft=3175)))
+    clock.at += timedelta(seconds=17)
+    after, _, _ = history(kept, clock)
+    after.show(planes(card(km=8.7, ft=3725)))
+    after.show(planes(card(km=3.3, ft=3725)))
+    after.clear()
+    assert {s.shown_at for s in kept.kept} == {"2026-07-01T12:00:00+00:00"}
+    assert (kept.kept[-1].closest_km, kept.kept[-1].lowest_ft) == (3.3, 3175)
+
+
+def test_a_restart_long_after_the_plane_was_last_seen_starts_a_new_visit():
+    before, kept, clock = history()
+    before.show(planes(card()))
+    clock.at += timedelta(minutes=31)
+    after, _, _ = history(kept, clock)
+    after.show(planes(card()))
+    assert [s.shown_at for s in kept.kept] == ["2026-07-01T12:00:00+00:00", "2026-07-01T12:31:00+00:00"]
 
 
 def test_a_plane_back_after_longer_than_a_visit_is_a_new_one():
@@ -164,7 +192,7 @@ def test_a_plane_back_after_longer_than_a_visit_is_a_new_one():
     clock.at += timedelta(minutes=31)
     recorder.show(planes(card("third")))
     recorder.show(planes(card()))
-    assert [s.shown_at for s in kept.kept if s.hex == "abc123"] == ["2026-07-01T12:00:00+00:00", "2026-07-01T12:36:00+00:00"]
+    assert sorted({s.shown_at for s in kept.kept if s.hex == "abc123"}) == ["2026-07-01T12:00:00+00:00", "2026-07-01T12:36:00+00:00"]
 
 
 def test_messages_without_a_plane_are_not_kept():
@@ -185,6 +213,34 @@ def test_the_store_keeps_and_replaces_and_lists_newest_first(tmp_path):
         ("bbb222", 2.0, "A Football Club"),
         ("aaa111", 3.0, None),
     ]
+
+
+def test_the_store_finds_a_planes_latest_visit(tmp_path):
+    store = SqliteShownStore(str(tmp_path / "history.sqlite3"), LOG)
+    store.keep(shown("aaa111", "2026-11-01T10:00:00+00:00"))
+    store.keep(shown("aaa111", "2026-11-01T11:00:00+00:00"))
+    store.keep(shown("bbb222", "2026-11-01T12:00:00+00:00"))
+    assert store.last_visit("aaa111") == shown("aaa111", "2026-11-01T11:00:00+00:00")
+    assert store.last_visit("ccc333") is None
+
+
+def test_a_history_kept_before_planes_had_a_last_seen_gets_one(tmp_path):
+    path = str(tmp_path / "history.sqlite3")
+    with closing(sqlite3.connect(path)) as db, db:
+        db.execute(
+            "CREATE TABLE shown (hex TEXT NOT NULL, shown_at TEXT NOT NULL, kind TEXT NOT NULL, callsign TEXT, "
+            "flight_number TEXT, registration TEXT, aircraft TEXT, type_code TEXT, airline TEXT, origin TEXT, "
+            "destination TEXT, owner TEXT, owner_category TEXT, emergency TEXT, closest_km REAL NOT NULL, "
+            "lowest_ft INTEGER, PRIMARY KEY (hex, shown_at))"
+        )
+        db.execute(
+            "INSERT INTO shown (hex, shown_at, kind, closest_km, lowest_ft) "
+            "VALUES ('aaa111', '2026-11-01T10:00:00+00:00', 'airline', 3.0, 4000)"
+        )
+    store = SqliteShownStore(path, LOG)
+    assert store.last_visit("aaa111") == shown("aaa111", "2026-11-01T10:00:00+00:00")
+    store.keep(shown("bbb222", "2026-11-01T11:00:00+00:00"))
+    assert [s.hex for s in store.everything()] == ["bbb222", "aaa111"]
 
 
 def test_only_old_airline_flights_are_forgotten(tmp_path):
@@ -208,6 +264,7 @@ def test_forgetting_runs_each_time_a_plane_is_kept():
     store.keep(shown())
     assert kept.forgotten == [datetime(2026, 8, 3, 12, tzinfo=UTC)]
     assert store.everything() == [shown()]
+    assert store.last_visit("abc123") == shown()
 
 
 def test_a_broken_store_is_logged_and_reads_as_empty(tmp_path, caplog):
@@ -217,6 +274,7 @@ def test_a_broken_store_is_logged_and_reads_as_empty(tmp_path, caplog):
     store.keep(shown())
     store.forget_airlines_before(datetime(2026, 1, 1, tzinfo=UTC))
     assert store.everything() == []
+    assert store.last_visit("abc123") is None
     assert "could not keep abc123" in caplog.text
     assert "could not forget old flights" in caplog.text
     assert "could not read the history" in caplog.text
