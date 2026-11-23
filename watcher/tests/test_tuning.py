@@ -36,6 +36,7 @@ def test_the_shipped_tunings_are_read_in_the_units_the_watcher_counts_in():
     assert tuning.portraits_kept == 200
     assert tuning.heard_below_km == 2
     assert tuning.spoken_services == ("ambulance", "police")
+    assert tuning.services_anywhere == ("ambulance", "police")
 
 
 def test_airports_are_said_by_city_unless_their_city_has_several():

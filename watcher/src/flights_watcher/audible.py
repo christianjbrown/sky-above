@@ -1,6 +1,6 @@
 """Which planes on the card are worth saying out loud. Every plane on the card is shown, but
-only two kinds are announced: an air ambulance or the police, wherever they are and however
-high, and any flight in the zone or on course into it that will be low enough over home to
+only some are announced: an air ambulance, the police or a famous owner's plane, wherever
+it is and however high, and any flight in the zone or on course into it that will be low enough over home to
 be heard. A plane in an emergency has its own announcement (see emergency_speech)."""
 
 from collections.abc import Collection, Sequence
@@ -22,6 +22,13 @@ class SpokenServices:
 
     def includes(self, card: dict[str, Any]) -> bool:
         return card.get("service") in self._kinds
+
+
+class FamousOwners:
+    """A plane whose owner is somebody you have heard of."""
+
+    def includes(self, card: dict[str, Any]) -> bool:
+        return bool(card.get("owner"))
 
 
 class HeardFromTheGround:

@@ -208,6 +208,7 @@ class Tuning:
     emergencies_announced_remembered: int
     services_kept: tuple[str, ...]
     service_hold_km: float
+    services_anywhere: tuple[str, ...]
     notable_max_age_seconds: float
     notable_reread_seconds: float
     notable_timeout_seconds: float
@@ -330,6 +331,7 @@ class Tuning:
             emergencies_announced_remembered=emergency.whole("announced_remembered"),
             services_kept=services.texts("kept"),
             service_hold_km=services.number("hold_km"),
+            services_anywhere=services.texts("anywhere"),
             notable_max_age_seconds=notable.number("max_age_hours") * HOUR,
             notable_reread_seconds=notable.number("reread_minutes") * MINUTE,
             notable_timeout_seconds=notable.number("timeout_seconds"),

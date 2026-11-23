@@ -123,8 +123,9 @@ clips_kept = 50
 # it has been read out.
 overhead_now_km = 0.5
 # A flight in the zone, or on course into it, is announced only when it passes home lower
-# than this, so it can be heard. These services are announced wherever they are and however
-# high; anything else is shown without a word. An emergency is always announced.
+# than this, so it can be heard. These services and famous owners' planes are announced
+# wherever they are and however high; anything else is shown without a word. An emergency
+# is always announced.
 heard_below_km = 2
 spoken_services = ["ambulance", "police"]
 # Flights already announced, so one that drops back to second or leaves and returns within
@@ -248,9 +249,11 @@ announced_remembered = 20
 [services]
 # Air ambulance, police and military aircraft get a card like any other plane, in the zone
 # or on their way into it. One that comes into the zone keeps the card until it is further
-# than this from home, so one circling just outside does not lose it.
+# than this from home, so one circling just outside does not lose it. The kinds in
+# anywhere also get a card wherever the antenna hears them, after the planes overhead.
 kept = ["ambulance", "police", "military"]
 hold_km = 5
+anywhere = ["ambulance", "police"]
 
 [notable]
 # The notable aircraft list, fetched again once it is this old, and read again this

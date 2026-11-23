@@ -1,4 +1,4 @@
-from flights_watcher.audible import FEET_PER_KM, AnyOf, HeardFromTheGround, SpokenServices
+from flights_watcher.audible import FEET_PER_KM, AnyOf, FamousOwners, HeardFromTheGround, SpokenServices
 
 IN_ZONE = {"destination": None, "altitudeFt": 4000, "verticalRateFpm": None, "overheadInSeconds": None, "distanceKm": 1.0}
 HEARD = HeardFromTheGround(2, 1.5)
@@ -44,3 +44,9 @@ def test_any_of_the_rules_will_do():
     assert rules.includes({"service": "police"})
     assert rules.includes(IN_ZONE)
     assert not rules.includes({**IN_ZONE, "altitudeFt": 9000})
+
+
+def test_a_famous_owners_plane_is_always_heard():
+    assert FamousOwners().includes({"owner": "A Pop Star"})
+    assert not FamousOwners().includes({"owner": None})
+    assert not FamousOwners().includes({})
