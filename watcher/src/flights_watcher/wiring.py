@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 from flights_watcher.announced import RememberedFlights
 from flights_watcher.anywhere import FamousOwner, HeardAnywhere
 from flights_watcher.approach import ApproachFinder, ClosestApproach, LandsFirst, OverheadAndApproaching, SteeredIn
-from flights_watcher.audible import AnyOf, HeardFromTheGround, SpecialAircraft
+from flights_watcher.audible import AnyOf, HeardFromTheGround, SpokenServices
 from flights_watcher.bound import DestinationBound, SameWay
 from flights_watcher.budget import BudgetedHttp, MonthlyBudget, PricedByPath
 from flights_watcher.caching import CachedOperatorNames, CachedPhotoLookup, CachedRouteLookup, RetryLater, TtlCache
@@ -292,7 +292,7 @@ def voices(settings: Settings, tuning: Tuning, clock: Clock, rare: RareKinds, lo
         SpeechTiming(tuning.spoken_chars_per_second, tuning.clip_making_ratio, launch_start, tuning.showing_start_seconds),
         clips,
         RememberedFlights(pathlib.Path(settings.state_dir) / tuning.announced_file, tuning.announced_kept_for, clock, logger),
-        AnyOf([SpecialAircraft(tuning.services_kept), HeardFromTheGround(tuning.heard_below_km)]),
+        AnyOf([SpokenServices(tuning.spoken_services), HeardFromTheGround(tuning.heard_below_km, settings.radius_km)]),
         logger,
     )
     quiet_hours = QuietHours.parse(settings.speech_quiet_hours)
