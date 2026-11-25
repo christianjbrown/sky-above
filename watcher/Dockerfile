@@ -1,6 +1,6 @@
 FROM python:3.15-slim
 
-COPY --from=ghcr.io/astral-sh/uv:0.13.9 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.10 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never PYTHONUNBUFFERED=1
 
 WORKDIR /app
